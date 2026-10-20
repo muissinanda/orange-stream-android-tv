@@ -1,0 +1,20 @@
+package com.orangestream.tv.ui;
+
+import android.os.Bundle;
+import androidx.fragment.app.FragmentActivity;
+import com.orangestream.tv.R;
+
+public class DetailsActivity extends FragmentActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_details);
+
+        if (savedInstanceState == null) {
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.details_fragment_container, new VideoDetailsFragment())
+                    .commit();
+        }
+    }
+}

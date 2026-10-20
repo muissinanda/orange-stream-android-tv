@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme for Pure Android TV Leanback Experience -->
+    <style name="Theme.OrangeStreamTV" parent="Theme.Leanback">
+        <item name="defaultBrandColor">@color/primary_orange</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:colorBackground">@color/bg_dark</item>
+        <item name="android:colorPrimary">@color/primary_orange</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+
+    <style name="Theme.OrangeStreamTV.Playback" parent="Theme.Leanback">
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:keepScreenOn">true</item>
+    </style>
+</resources>

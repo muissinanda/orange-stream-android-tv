@@ -1,0 +1,5 @@
+<resources>
+    <color name="bg_dark">#07080C</color>
+    <color name="primary_orange">#F97316</color>
+    <color name="accent_orange">#EA580C</color>
+</resources>

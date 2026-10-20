@@ -1,0 +1,57 @@
+name: Build Pure Native Android TV APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build APK with Gradle
+      run: ./gradlew assembleDebug
+
+    - name: Prepare APK Output
+      run: |
+        cp app/build/outputs/apk/debug/app-debug.apk OrangeStreamTV-PureNative.apk
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: OrangeStreamTV-PureNative
+        path: OrangeStreamTV-PureNative.apk
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      with:
+        tag_name: v2.0-native
+        name: "Orange Stream TV v2.0 (Pure Native Leanback)"
+        body: |
+          ### 🚀 Orange Stream TV v2.0 - Pure Native Android TV APK
+          - **100% Pure Native Leanback UI** (Zero Browser / Zero WebView)
+          - **Hardware-accelerated Google ExoPlayer** for HLS & MP4 video
+          - **Full Xiaomi Mi TV 4A & D-Pad Remote Support** (Bebas dari kursor mouse)
+          - **Katalog Film Bioskop, Serial TV TMDb & Siaran Olahraga Live**
+        files: |
+          OrangeStreamTV-PureNative.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
