@@ -1,10 +1,17 @@
 package com.orangestream.tv.ui;
 
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 import androidx.fragment.app.FragmentActivity;
@@ -19,10 +26,13 @@ import com.orangestream.tv.model.Movie;
 public class PlaybackActivity extends FragmentActivity {
 
     private PlayerView mPlayerView;
+    private WebView mWebView;
     private ExoPlayer mPlayer;
     private ProgressBar mLoadingSpinner;
     private Movie mMovie;
     private String mServer = "autoembed";
+    private View mCustomView;
+    private WebChromeClient.CustomViewCallback mCustomViewCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,18 +45,72 @@ public class PlaybackActivity extends FragmentActivity {
         if (serverExtra != null) mServer = serverExtra;
 
         mPlayerView = findViewById(R.id.playerView);
+        mWebView = findViewById(R.id.playerWebView);
         mLoadingSpinner = findViewById(R.id.loadingSpinner);
 
-        initPlayer();
+        startPlayback();
     }
 
-    private void initPlayer() {
+    private void startPlayback() {
         if (mMovie == null) {
             finish();
             return;
         }
 
         mLoadingSpinner.setVisibility(View.VISIBLE);
+
+        String streamUrl = mMovie.getStreamUrl();
+
+        // 1. If it's a Movie or TV show without direct streamUrl, generate Embed URL
+        if (!mMovie.isSport() && (streamUrl == null || streamUrl.isEmpty())) {
+            streamUrl = buildEmbedUrl(mMovie, mServer);
+        }
+
+        // 2. Decide Player Engine
+        if (streamUrl != null && (streamUrl.contains(".m3u8") || streamUrl.contains(".mp4"))) {
+            initExoPlayer(streamUrl);
+        } else if (streamUrl != null && !streamUrl.isEmpty()) {
+            initWebView(streamUrl);
+        } else {
+            Toast.makeText(this, "URL siaran tidak valid", Toast.LENGTH_SHORT).show();
+            finish();
+        }
+    }
+
+    private String buildEmbedUrl(Movie movie, String server) {
+        long id = movie.getId();
+        boolean isTv = "tv".equalsIgnoreCase(movie.getMediaType());
+
+        if (isTv) {
+            switch (server) {
+                case "multiembed":
+                    return "https://multiembed.mov/?video_id=" + id + "&tmdb=1&s=1&e=1";
+                case "twoembed":
+                    return "https://www.2embed.cc/embedtv/" + id + "&s=1&e=1";
+                case "vidsrc":
+                    return "https://vidsrc.pm/embed/tv/" + id + "/1/1";
+                case "autoembed":
+                default:
+                    return "https://autoembed.co/tv/tmdb/" + id + "-1-1";
+            }
+        } else {
+            switch (server) {
+                case "multiembed":
+                    return "https://multiembed.mov/?video_id=" + id + "&tmdb=1";
+                case "twoembed":
+                    return "https://www.2embed.cc/embed/" + id;
+                case "vidsrc":
+                    return "https://vidsrc.pm/embed/movie/" + id;
+                case "autoembed":
+                default:
+                    return "https://autoembed.co/movie/tmdb/" + id;
+            }
+        }
+    }
+
+    private void initExoPlayer(String url) {
+        mWebView.setVisibility(View.GONE);
+        mPlayerView.setVisibility(View.VISIBLE);
 
         mPlayer = new ExoPlayer.Builder(this)
                 .setSeekBackIncrementMs(10000)
@@ -55,13 +119,7 @@ public class PlaybackActivity extends FragmentActivity {
 
         mPlayerView.setPlayer(mPlayer);
 
-        String streamUrl = mMovie.getStreamUrl();
-        if (streamUrl == null || streamUrl.isEmpty()) {
-            // Default demo or direct stream
-            streamUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
-        }
-
-        Uri videoUri = Uri.parse(streamUrl);
+        Uri videoUri = Uri.parse(url);
         MediaItem mediaItem = MediaItem.fromUri(videoUri);
         mPlayer.setMediaItem(mediaItem);
         mPlayer.prepare();
@@ -87,36 +145,111 @@ public class PlaybackActivity extends FragmentActivity {
         });
     }
 
+    private void initWebView(String url) {
+        mPlayerView.setVisibility(View.GONE);
+        mWebView.setVisibility(View.VISIBLE);
+
+        WebSettings settings = mWebView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
+        settings.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+
+        mWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String reqUrl = request.getUrl().toString();
+                // Allow player host navigations, block random ad redirects
+                if (reqUrl.contains("autoembed") || reqUrl.contains("multiembed") || 
+                    reqUrl.contains("2embed") || reqUrl.contains("vidsrc") || 
+                    reqUrl.contains("embed.st") || reqUrl.contains("boyblade.my.id") ||
+                    reqUrl.contains("workers.dev")) {
+                    return false;
+                }
+                return true; // Block ad popups
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                mLoadingSpinner.setVisibility(View.GONE);
+            }
+        });
+
+        mWebView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                if (newProgress >= 80) {
+                    mLoadingSpinner.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                if (mCustomView != null) {
+                    callback.onCustomViewHidden();
+                    return;
+                }
+                mCustomView = view;
+                mCustomViewCallback = callback;
+                ((FrameLayout) findViewById(android.R.id.content)).addView(view);
+                mWebView.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onHideCustomView() {
+                if (mCustomView == null) return;
+                ((FrameLayout) findViewById(android.R.id.content)).removeView(mCustomView);
+                mCustomView = null;
+                mCustomViewCallback.onCustomViewHidden();
+                mWebView.setVisibility(View.VISIBLE);
+            }
+        });
+
+        mWebView.loadUrl(url);
+    }
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (mPlayer == null) return super.onKeyDown(keyCode, event);
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (mCustomView != null) {
+                WebChromeClient client = new WebChromeClient();
+                client.onHideCustomView();
+                return true;
+            }
+            releasePlayer();
+            finish();
+            return true;
+        }
 
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                if (mPlayer.isPlaying()) {
-                    mPlayer.pause();
+        if (mPlayer != null) {
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                case KeyEvent.KEYCODE_ENTER:
+                case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                    if (mPlayer.isPlaying()) {
+                        mPlayer.pause();
+                        mPlayerView.showController();
+                    } else {
+                        mPlayer.play();
+                    }
+                    return true;
+
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                    mPlayer.seekTo(Math.max(0, mPlayer.getCurrentPosition() - 10000));
                     mPlayerView.showController();
-                } else {
-                    mPlayer.play();
-                }
-                return true;
+                    return true;
 
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-                mPlayer.seekTo(Math.max(0, mPlayer.getCurrentPosition() - 10000));
-                mPlayerView.showController();
-                return true;
-
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
-                mPlayer.seekTo(Math.min(mPlayer.getDuration(), mPlayer.getCurrentPosition() + 10000));
-                mPlayerView.showController();
-                return true;
-
-            case KeyEvent.KEYCODE_BACK:
-                releasePlayer();
-                finish();
-                return true;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    mPlayer.seekTo(Math.min(mPlayer.getDuration(), mPlayer.getCurrentPosition() + 10000));
+                    mPlayerView.showController();
+                    return true;
+            }
         }
 
         return super.onKeyDown(keyCode, event);
@@ -128,6 +261,12 @@ public class PlaybackActivity extends FragmentActivity {
             mPlayer.release();
             mPlayer = null;
         }
+        if (mWebView != null) {
+            mWebView.loadUrl("about:blank");
+            mWebView.stopLoading();
+            mWebView.destroy();
+            mWebView = null;
+        }
     }
 
     @Override
@@ -136,12 +275,25 @@ public class PlaybackActivity extends FragmentActivity {
         if (mPlayer != null) {
             mPlayer.pause();
         }
+        if (mWebView != null) {
+            mWebView.onPause();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mWebView != null) {
+            mWebView.onResume();
+        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        releasePlayer();
+        if (mPlayer != null) {
+            mPlayer.stop();
+        }
     }
 
     @Override

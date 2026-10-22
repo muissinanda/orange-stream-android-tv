@@ -16,6 +16,14 @@
         app:surface_type="surface_view"
         app:show_buffering="when_playing" />
 
+    <WebView
+        android:id="@+id/playerWebView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
     <ProgressBar
         android:id="@+id/loadingSpinner"
         android:layout_width="64dp"

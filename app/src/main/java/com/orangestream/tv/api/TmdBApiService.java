@@ -34,6 +34,14 @@ public interface TmdBApiService {
             @Query("sort_by") String sortBy
     );
 
+    @GET("discover/tv")
+    Call<MovieResponse> getTvByLanguage(
+            @Query("api_key") String apiKey,
+            @Query("with_original_language") String langCode,
+            @Query("language") String lang,
+            @Query("sort_by") String sortBy
+    );
+
     @GET("movie/{movie_id}")
     Call<Movie> getMovieDetails(@Path("movie_id") long movieId, @Query("api_key") String apiKey, @Query("language") String lang);
 

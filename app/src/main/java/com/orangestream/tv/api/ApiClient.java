@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 public class ApiClient {
 
-    public static final String TMDB_API_KEY = "60eb20c0a969f6e3c8376483fbdd6e56";
+    public static final String TMDB_API_KEY = "df42d80eb5e5a88706ab6e992ba050dd";
     private static final String TMDB_BASE_URL = "https://api.themoviedb.org/3/";
     private static final String SPORTS_BASE_URL = "https://film.boyblade.my.id/";
 

@@ -74,17 +74,16 @@ public class MainFragment extends BrowseSupportFragment {
         mRowsAdapter.add(new ListRow(headerTrending, trendingAdapter));
         fetchTrending(trendingAdapter);
 
-        // Row 1: Live Sports
-        ArrayObjectAdapter sportsAdapter = new ArrayObjectAdapter(cardPresenter);
-        HeaderItem headerSports = new HeaderItem(1, "⚽ Siaran Langsung Olahraga (Live Sports)");
-        mRowsAdapter.add(new ListRow(headerSports, sportsAdapter));
-        fetchLiveSports(sportsAdapter);
-
-        // Row 2: 24/7 Saluran Olahraga
+        // Row 1: 24/7 Saluran TV Olahraga
         ArrayObjectAdapter channelsAdapter = new ArrayObjectAdapter(cardPresenter);
-        HeaderItem headerChannels = new HeaderItem(2, "⚡ Saluran TV Olahraga 24/7 Non-Stop");
+        HeaderItem headerChannels = new HeaderItem(1, "⚡ Saluran TV Olahraga 24/7 Non-Stop");
         mRowsAdapter.add(new ListRow(headerChannels, channelsAdapter));
-        load247SportsChannels(channelsAdapter);
+
+        // Row 2: Live Sports Matches
+        ArrayObjectAdapter sportsAdapter = new ArrayObjectAdapter(cardPresenter);
+        HeaderItem headerSports = new HeaderItem(2, "⚽ Siaran Langsung Olahraga (Live Sports)");
+        mRowsAdapter.add(new ListRow(headerSports, sportsAdapter));
+        fetchLiveSportsAndChannels(sportsAdapter, channelsAdapter);
 
         // Row 3: Popular Movies
         ArrayObjectAdapter moviesAdapter = new ArrayObjectAdapter(cardPresenter);
@@ -115,6 +114,12 @@ public class MainFragment extends BrowseSupportFragment {
         HeaderItem headerKdrama = new HeaderItem(7, "🇰🇷 Drama Korea (K-Drama)");
         mRowsAdapter.add(new ListRow(headerKdrama, kdramaAdapter));
         fetchKdrama(kdramaAdapter);
+
+        // Row 8: Horror Movies
+        ArrayObjectAdapter horrorAdapter = new ArrayObjectAdapter(cardPresenter);
+        HeaderItem headerHorror = new HeaderItem(8, "👻 Film Horor Pilihan");
+        mRowsAdapter.add(new ListRow(headerHorror, horrorAdapter));
+        fetchMoviesByGenre("27", horrorAdapter);
 
         setAdapter(mRowsAdapter);
     }
@@ -182,11 +187,12 @@ public class MainFragment extends BrowseSupportFragment {
     }
 
     private void fetchKdrama(ArrayObjectAdapter adapter) {
-        ApiClient.getTmdBService().getTvByGenre(ApiClient.TMDB_API_KEY, "18", "id-ID", "popularity.desc").enqueue(new Callback<MovieResponse>() {
+        ApiClient.getTmdBService().getTvByLanguage(ApiClient.TMDB_API_KEY, "ko", "id-ID", "popularity.desc").enqueue(new Callback<MovieResponse>() {
             @Override
             public void onResponse(Call<MovieResponse> call, Response<MovieResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     for (Movie m : response.body().getResults()) {
+                        m.setSport(false);
                         adapter.add(m);
                     }
                 }
@@ -196,27 +202,45 @@ public class MainFragment extends BrowseSupportFragment {
         });
     }
 
-    private void fetchLiveSports(ArrayObjectAdapter adapter) {
+    private void fetchLiveSportsAndChannels(ArrayObjectAdapter sportsAdapter, ArrayObjectAdapter channelsAdapter) {
         ApiClient.getSportsService().getAllMatches().enqueue(new Callback<List<SportsMatch>>() {
             @Override
             public void onResponse(Call<List<SportsMatch>> call, Response<List<SportsMatch>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     for (SportsMatch match : response.body()) {
                         Movie sportItem = new Movie();
-                        sportItem.setId(match.getId().hashCode());
+                        sportItem.setId(match.getId() != null ? match.getId().hashCode() : System.currentTimeMillis());
+                        sportItem.setTitle(match.getTitle() != null ? match.getTitle() : "Siaran Olahraga");
                         sportItem.setSport(true);
                         sportItem.setCategory(match.getCategory());
+                        sportItem.setPosterPath(match.getPoster());
+                        sportItem.setBackdropPath(match.getPoster());
                         sportItem.setStreamUrl("https://embed.st/embed/" + (match.getCategory() != null ? match.getCategory() : "live") + "/" + match.getId() + "/1");
-                        adapter.add(sportItem);
+
+                        if (match.getDate() <= 0) {
+                            // 24/7 Channel
+                            channelsAdapter.add(sportItem);
+                        } else {
+                            // Live & Upcoming Match
+                            sportsAdapter.add(sportItem);
+                        }
                     }
                 }
+                
+                // Fallback 24/7 channels if list was empty
+                if (channelsAdapter.size() == 0) {
+                    loadFallback247Channels(channelsAdapter);
+                }
             }
+
             @Override
-            public void onFailure(Call<List<SportsMatch>> call, Throwable t) {}
+            public void onFailure(Call<List<SportsMatch>> call, Throwable t) {
+                loadFallback247Channels(channelsAdapter);
+            }
         });
     }
 
-    private void load247SportsChannels(ArrayObjectAdapter adapter) {
+    private void loadFallback247Channels(ArrayObjectAdapter adapter) {
         String[][] channels = {
                 {"Sky Sports Golf 24/7", "golf", "https://embed.st/embed/golf/skygolf/1", "https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800"},
                 {"Tennis Channel HD", "tennis", "https://embed.st/embed/tennis/tennisch/1", "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=800"},
@@ -230,9 +254,12 @@ public class MainFragment extends BrowseSupportFragment {
         for (String[] ch : channels) {
             Movie chItem = new Movie();
             chItem.setId(ch[0].hashCode());
+            chItem.setTitle(ch[0]);
             chItem.setSport(true);
             chItem.setCategory(ch[1]);
             chItem.setStreamUrl(ch[2]);
+            chItem.setPosterPath(ch[3]);
+            chItem.setBackdropPath(ch[3]);
             adapter.add(chItem);
         }
     }
