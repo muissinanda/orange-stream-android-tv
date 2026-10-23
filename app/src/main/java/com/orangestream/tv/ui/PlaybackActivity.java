@@ -2,13 +2,17 @@ package com.orangestream.tv.ui;
 
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Message;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
+import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
@@ -33,6 +37,40 @@ public class PlaybackActivity extends FragmentActivity {
     private String mServer = "autoembed";
     private View mCustomView;
     private WebChromeClient.CustomViewCallback mCustomViewCallback;
+
+    private static final String SANDBOX_BYPASS_SCRIPT =
+            "(function() {" +
+            "  try {" +
+            "    var dummyWin = {" +
+            "      closed: false," +
+            "      close: function() { this.closed = true; }," +
+            "      focus: function() {}," +
+            "      blur: function() {}," +
+            "      postMessage: function() {}," +
+            "      location: { href: 'about:blank' }" +
+            "    };" +
+            "    window.open = function() { return dummyWin; };" +
+            "  } catch(e) {}" +
+            "  try {" +
+            "    if (window.frameElement) {" +
+            "      window.frameElement.removeAttribute('sandbox');" +
+            "    }" +
+            "  } catch(e) {}" +
+            "  try {" +
+            "    var observer = new MutationObserver(function() {" +
+            "      var err = document.getElementById('sbxErr') || document.querySelector('[id*=\"sbx\"]');" +
+            "      if (err) err.remove();" +
+            "      document.querySelectorAll('div').forEach(function(d) {" +
+            "        if (d.textContent && d.textContent.indexOf('Remove sandbox attributes') !== -1) {" +
+            "          d.remove();" +
+            "        }" +
+            "      });" +
+            "    });" +
+            "    if (document.documentElement) {" +
+            "      observer.observe(document.documentElement, { childList: true, subtree: true });" +
+            "    }" +
+            "  } catch(e) {}" +
+            "})();";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -149,6 +187,17 @@ public class PlaybackActivity extends FragmentActivity {
         mPlayerView.setVisibility(View.GONE);
         mWebView.setVisibility(View.VISIBLE);
 
+        // Reset any cached sandbox flags
+        try {
+            WebStorage.getInstance().deleteAllData();
+        } catch (Exception ignored) {}
+
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.setAcceptThirdPartyCookies(mWebView, true);
+        }
+
         WebSettings settings = mWebView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -158,35 +207,71 @@ public class PlaybackActivity extends FragmentActivity {
         settings.setAllowContentAccess(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
-        settings.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setSupportMultipleWindows(true);
+
+        // Clean user-agent: remove '; wv' to appear as standard full Chrome
+        String defaultUa = settings.getUserAgentString();
+        if (defaultUa != null && defaultUa.contains("; wv")) {
+            settings.setUserAgentString(defaultUa.replace("; wv", "").replace("Version/4.0 ", ""));
+        }
 
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String reqUrl = request.getUrl().toString();
-                // Allow player host navigations, block random ad redirects
-                if (reqUrl.contains("autoembed") || reqUrl.contains("multiembed") || 
-                    reqUrl.contains("2embed") || reqUrl.contains("vidsrc") || 
-                    reqUrl.contains("embed.st") || reqUrl.contains("boyblade.my.id") ||
-                    reqUrl.contains("workers.dev")) {
-                    return false;
-                }
-                return true; // Block ad popups
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                view.evaluateJavascript(SANDBOX_BYPASS_SCRIPT, null);
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                view.evaluateJavascript(SANDBOX_BYPASS_SCRIPT, null);
                 mLoadingSpinner.setVisibility(View.GONE);
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                Uri uri = request.getUrl();
+                String scheme = uri != null ? uri.getScheme() : null;
+                // Block external non-web schemes
+                if (scheme != null && !scheme.startsWith("http")) {
+                    return true;
+                }
+                // Allow sub-frame resources and player CDN scripts
+                if (!request.isForMainFrame()) {
+                    return false;
+                }
+                return false;
             }
         });
 
         mWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                if (newProgress >= 80) {
+                view.evaluateJavascript(SANDBOX_BYPASS_SCRIPT, null);
+                if (newProgress >= 70) {
                     mLoadingSpinner.setVisibility(View.GONE);
                 }
+            }
+
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+                // Return a dummy WebView transport so window.open never returns null
+                WebView dummyWebView = new WebView(view.getContext());
+                dummyWebView.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest req) {
+                        return true; // Neutralize popup navigations
+                    }
+                });
+                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+                transport.setWebView(dummyWebView);
+                resultMsg.sendToTarget();
+                return true;
             }
 
             @Override

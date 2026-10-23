@@ -43,14 +43,14 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       with:
-        tag_name: v2.1-native
-        name: "Orange Stream TV v2.1 (Full Live Sports & TMDb Catalog)"
+        tag_name: v2.2-native
+        name: "Orange Stream TV v2.2 (Fix Sandbox Error & Anti-Adblock Bypass)"
         body: |
-          ### 🚀 Orange Stream TV v2.1 - Pure Native Android TV APK
-          - **Sinkronisasi Penuh TMDb & Olahraga Live**: Menggunakan API Key aktif & proxy siaran resmi dari website film.boyblade.my.id.
-          - **Saluran 24/7 & Pertandingan Live Lengkap**: Sky Sports, Tennis Channel, Rally TV, Sepak Bola, dll.
-          - **Dual Playback Engine**: ExoPlayer untuk direct HLS/MP4 + Fullscreen Hardware-accelerated Engine untuk Web Embeds.
-          - **Full Xiaomi Mi TV 4A & D-Pad Remote Support**: Navigasi presisi tanpa mouse toggle / kursor.
+          ### 🚀 Orange Stream TV v2.2 - Pure Native Android TV APK
+          - **Bypass Error "Remove sandbox attributes on the iframe tag"**: Penanganan window.open polyfill & WebChromeClient onCreateWindow bypass untuk server embed.st, autoembed, dll.
+          - **Third-Party Cookies & WebStorage Enabled**: Mendukung streaming CDN cross-origin.
+          - **User-Agent Optimization**: Menggunakan Clean Chrome UA untuk menghindari deteksi WebView / bot protection.
+          - **Full Xiaomi Mi TV 4A & D-Pad Remote Support**: Navigasi presisi tanpa mouse pointer / kursor.
         files: |
           OrangeStreamTV-PureNative.apk
       env:
