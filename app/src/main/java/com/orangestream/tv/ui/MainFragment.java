@@ -207,6 +207,7 @@ public class MainFragment extends BrowseSupportFragment {
                         sportItem.setCategory(match.getCategory());
                         sportItem.setPosterPath(match.getPoster());
                         sportItem.setBackdropPath(match.getPoster());
+                        sportItem.setMatchDate(match.getDate());
 
                         String streamUrl = "https://embed.st/embed/" + (match.getCategory() != null ? match.getCategory() : "live") + "/" + match.getId() + "/1";
                         if (match.getSources() != null && !match.getSources().isEmpty()) {
@@ -270,6 +271,8 @@ public class MainFragment extends BrowseSupportFragment {
             chItem.setStreamUrl(ch[2]);
             chItem.setPosterPath(ch[3]);
             chItem.setBackdropPath(ch[3]);
+            chItem.setMatchDate(0);
+            chItem.setCustomSubtitle("⚡ Saluran TV 24/7 Non-Stop");
             adapter.add(chItem);
         }
     }

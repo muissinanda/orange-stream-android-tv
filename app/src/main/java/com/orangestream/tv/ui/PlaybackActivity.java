@@ -50,9 +50,79 @@ public class PlaybackActivity extends FragmentActivity {
     private String mServer = "vidlink";
     private View mCustomView;
     private WebChromeClient.CustomViewCallback mCustomViewCallback;
+    private final android.os.Handler mUiHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     private static final String DESKTOP_UA =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+
+    private static final String AUTOPLAY_SCRIPT =
+            "(function() {" +
+            "  var maxTries = 40;" +
+            "  var count = 0;" +
+            "  var autoPlayTimer = setInterval(function() {" +
+            "    count++;" +
+            "    var videoStarted = false;" +
+            "    try {" +
+            "      var vids = document.querySelectorAll('video');" +
+            "      for (var i = 0; i < vids.length; i++) {" +
+            "        var v = vids[i];" +
+            "        if (v) {" +
+            "          if (v.paused) {" +
+            "            var p = v.play();" +
+            "            if (p && p.catch) {" +
+            "              p.catch(function() {" +
+            "                try { v.muted = true; v.play(); } catch(e) {}" +
+            "              });" +
+            "            }" +
+            "          }" +
+            "          if (!v.paused || v.currentTime > 0) {" +
+            "            videoStarted = true;" +
+            "          }" +
+            "        }" +
+            "      }" +
+            "    } catch(e) {}" +
+            "    try {" +
+            "      if (typeof window.jwplayer === 'function') {" +
+            "        var jw = window.jwplayer();" +
+            "        if (jw && typeof jw.play === 'function') {" +
+            "          var st = typeof jw.getState === 'function' ? jw.getState() : '';" +
+            "          if (st !== 'playing' && st !== 'buffering') {" +
+            "            jw.play();" +
+            "          }" +
+            "          if (st === 'playing') videoStarted = true;" +
+            "        }" +
+            "      }" +
+            "    } catch(e) {}" +
+            "    try {" +
+            "      var selectors = [" +
+            "        '.jw-display-icon-display'," +
+            "        '.jw-icon-playback'," +
+            "        '.jw-preview'," +
+            "        '.vjs-big-play-button'," +
+            "        '.play-btn'," +
+            "        '.play-button'," +
+            "        '#play-btn'," +
+            "        '.player-poster'," +
+            "        'button[aria-label*=\"Play\" i]'," +
+            "        'button[title*=\"Play\" i]'," +
+            "        'button.play'" +
+            "      ];" +
+            "      for (var s = 0; s < selectors.length; s++) {" +
+            "        var btns = document.querySelectorAll(selectors[s]);" +
+            "        for (var b = 0; b < btns.length; b++) {" +
+            "          var btn = btns[b];" +
+            "          if (btn && btn.offsetParent !== null) {" +
+            "            btn.click();" +
+            "            btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));" +
+            "          }" +
+            "        }" +
+            "      }" +
+            "    } catch(e) {}" +
+            "    if ((videoStarted && count > 10) || count >= maxTries) {" +
+            "      clearInterval(autoPlayTimer);" +
+            "    }" +
+            "  }, 350);" +
+            "})();";
 
     private static final String POLYFILL_SCRIPT =
             "(function() {" +
@@ -94,9 +164,11 @@ public class PlaybackActivity extends FragmentActivity {
             "  } catch(e) {}" +
             "})();";
 
-    // Synchronous polyfill and style injected into EVERY HTML frame (main frame and nested iframes)
+    private static final String FULL_INJECTION_SCRIPT = POLYFILL_SCRIPT + AUTOPLAY_SCRIPT;
+
+    // Synchronous polyfill, autoplay daemon, and style injected into EVERY HTML frame (main frame and nested iframes)
     private static final String SYNCHRONOUS_INJECTION =
-            "<script>" + POLYFILL_SCRIPT + "</script>" +
+            "<script>" + FULL_INJECTION_SCRIPT + "</script>" +
             "<style>" +
             "  #sbxErr, #sbxwo, [id*='sbx'], div[id*='sbx']," +
             "  div[style*='2147483647'], div[style*='7fffffff'] {" +
@@ -265,7 +337,7 @@ public class PlaybackActivity extends FragmentActivity {
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             HashSet<String> rules = new HashSet<>();
             rules.add("*");
-            WebViewCompat.addDocumentStartJavaScript(mWebView, POLYFILL_SCRIPT, rules);
+            WebViewCompat.addDocumentStartJavaScript(mWebView, FULL_INJECTION_SCRIPT, rules);
         }
 
         mWebView.setWebViewClient(new WebViewClient() {
@@ -376,14 +448,23 @@ public class PlaybackActivity extends FragmentActivity {
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
                 mLoadingSpinner.setVisibility(View.VISIBLE);
-                view.evaluateJavascript(POLYFILL_SCRIPT, null);
+                view.evaluateJavascript(FULL_INJECTION_SCRIPT, null);
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 mLoadingSpinner.setVisibility(View.GONE);
-                view.evaluateJavascript(POLYFILL_SCRIPT, null);
+                view.evaluateJavascript(FULL_INJECTION_SCRIPT, null);
+
+                long[] retryDelays = {500, 1200, 2200, 3500, 5000};
+                for (long delay : retryDelays) {
+                    mUiHandler.postDelayed(() -> {
+                        if (mWebView != null) {
+                            mWebView.evaluateJavascript(AUTOPLAY_SCRIPT, null);
+                        }
+                    }, delay);
+                }
             }
 
             @Override
@@ -495,6 +576,22 @@ public class PlaybackActivity extends FragmentActivity {
                     mPlayer.seekTo(Math.min(mPlayer.getDuration(), mPlayer.getCurrentPosition() + 10000));
                     mPlayerView.showController();
                     return true;
+            }
+        } else if (mWebView != null && mWebView.getVisibility() == View.VISIBLE) {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) {
+                mWebView.evaluateJavascript(
+                    "(function() {" +
+                    "  var v = document.querySelector('video');" +
+                    "  if (v) { if (v.paused) v.play(); else v.pause(); return; }" +
+                    "  if (typeof window.jwplayer === 'function') {" +
+                    "    var jw = window.jwplayer();" +
+                    "    if (jw && typeof jw.play === 'function') {" +
+                    "      var st = typeof jw.getState === 'function' ? jw.getState() : '';" +
+                    "      if (st === 'playing') jw.pause(); else jw.play();" +
+                    "    }" +
+                    "  }" +
+                    "})();", null);
+                return true;
             }
         }
 

@@ -39,6 +39,8 @@ public class Movie implements Serializable {
     private boolean isSport = false;
     private String streamUrl;
     private String category;
+    private long matchDate = 0;
+    private String customSubtitle = null;
 
     public Movie() {}
 
@@ -155,4 +157,52 @@ public class Movie implements Serializable {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public long getMatchDate() { return matchDate; }
+    public void setMatchDate(long matchDate) { this.matchDate = matchDate; }
+
+    public String getCustomSubtitle() { return customSubtitle; }
+    public void setCustomSubtitle(String customSubtitle) { this.customSubtitle = customSubtitle; }
+
+    public String getSportTimeFormatted() {
+        if (customSubtitle != null && !customSubtitle.trim().isEmpty()) {
+            return customSubtitle;
+        }
+        if (matchDate <= 0) {
+            return "⚡ Saluran TV 24/7";
+        }
+
+        long now = System.currentTimeMillis();
+        java.util.Date matchD = new java.util.Date(matchDate);
+        java.text.SimpleDateFormat timeFormat = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault());
+        String timeStr = timeFormat.format(matchD);
+
+        // Check if currently live: from 15 minutes before scheduled kickoff until 3.5 hours (210 mins) after
+        if (now >= matchDate - (15 * 60 * 1000L) && now <= matchDate + (210 * 60 * 1000L)) {
+            return "🔴 SEDANG LIVE • " + timeStr + " WIB";
+        }
+
+        // If finished
+        if (now > matchDate + (210 * 60 * 1000L)) {
+            java.text.SimpleDateFormat endedFormat = new java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale.getDefault());
+            return "Selesai • " + endedFormat.format(matchD) + " WIB";
+        }
+
+        // Check if Today or Tomorrow in local device calendar
+        java.util.Calendar calNow = java.util.Calendar.getInstance();
+        java.util.Calendar calMatch = java.util.Calendar.getInstance();
+        calMatch.setTime(matchD);
+
+        int dayDiff = calMatch.get(java.util.Calendar.DAY_OF_YEAR) - calNow.get(java.util.Calendar.DAY_OF_YEAR);
+        int yearDiff = calMatch.get(java.util.Calendar.YEAR) - calNow.get(java.util.Calendar.YEAR);
+
+        if (yearDiff == 0 && dayDiff == 0) {
+            return "Hari ini, " + timeStr + " WIB";
+        } else if (yearDiff == 0 && dayDiff == 1) {
+            return "Besok, " + timeStr + " WIB";
+        } else {
+            java.text.SimpleDateFormat dayFormat = new java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale.getDefault());
+            return dayFormat.format(matchD) + " WIB";
+        }
+    }
 }

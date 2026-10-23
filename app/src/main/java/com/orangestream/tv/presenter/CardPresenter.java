@@ -59,7 +59,11 @@ public class CardPresenter extends Presenter {
         Context context = cardView.getContext();
 
         cardView.setTitleText(movie.getDisplayTitle());
-        cardView.setContentText(movie.getRatingString() + " • " + movie.getYear());
+        if (movie.isSport()) {
+            cardView.setContentText(movie.getSportTimeFormatted());
+        } else {
+            cardView.setContentText(movie.getRatingString() + " • " + movie.getYear());
+        }
 
         int width = dpToPx(context, movie.isSport() ? SPORTS_WIDTH_DP : POSTER_WIDTH_DP);
         int height = dpToPx(context, movie.isSport() ? SPORTS_HEIGHT_DP : POSTER_HEIGHT_DP);
