@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/playbackRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000"
     android:keepScreenOn="true">
 
+    <!-- Native ExoPlayer (for direct HLS/MP4 streams) -->
     <androidx.media3.ui.PlayerView
         android:id="@+id/playerView"
         android:layout_width="match_parent"
@@ -16,6 +18,7 @@
         app:surface_type="surface_view"
         app:show_buffering="when_playing" />
 
+    <!-- Pure Native WebKit Engine (for embed.st live sports) -->
     <WebView
         android:id="@+id/playerWebView"
         android:layout_width="match_parent"
@@ -24,12 +27,123 @@
         android:focusable="true"
         android:focusableInTouchMode="true" />
 
-    <ProgressBar
-        android:id="@+id/loadingSpinner"
-        android:layout_width="64dp"
-        android:layout_height="64dp"
+    <!-- Glassmorphism Loading HUD -->
+    <LinearLayout
+        android:id="@+id/loadingLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:indeterminateTint="@color/primary_orange"
-        android:visibility="gone" />
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/bg_glass_card"
+        android:elevation="12dp"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:id="@+id/loadingSpinner"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/primary_orange" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="STREAMED.ST LIVE"
+            android:textColor="@color/primary_orange"
+            android:textStyle="bold"
+            android:textSize="12sp"
+            android:letterSpacing="0.1" />
+
+        <TextView
+            android:id="@+id/loadingTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Memuat Pertandingan..."
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:maxLines="2"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/loadingSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="⚡ Menghubungkan ke siaran langsung kualitas HD..."
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:gravity="center" />
+    </LinearLayout>
+
+    <!-- Sleek Top Controls Bar (Ideal for Touch HP & TV) -->
+    <LinearLayout
+        android:id="@+id/topControlBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_top_bar"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="20dp"
+        android:elevation="10dp"
+        android:visibility="visible">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_btn_circle"
+            android:src="@drawable/ic_arrow_back"
+            android:contentDescription="Kembali"
+            android:scaleType="centerInside"
+            android:focusable="true" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/playerTitleText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Streamed Live Sports"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/playerStatusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="🔴 SIARAN LANGSUNG • KUALITAS HD"
+                android:textColor="@color/primary_orange"
+                android:textStyle="bold"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btnRefresh"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_btn_circle"
+            android:src="@drawable/ic_refresh"
+            android:contentDescription="Muat Ulang"
+            android:scaleType="centerInside"
+            android:focusable="true" />
+    </LinearLayout>
 
 </FrameLayout>

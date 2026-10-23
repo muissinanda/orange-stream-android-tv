@@ -1,6 +1,7 @@
 package com.orangestream.tv.ui;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -56,16 +57,19 @@ public class MainFragment extends BrowseSupportFragment {
     }
 
     private void setupUIElements() {
-        setTitle("ORANGE STREAM TV");
+        setTitle("STREAMED TV • LIVE SPORTS");
         setBadgeDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.logo));
         setHeadersState(HEADERS_ENABLED);
         setHeadersTransitionOnBackEnabled(true);
         setBrandColor(ContextCompat.getColor(getActivity(), R.color.primary_orange));
-        setSearchAffordanceColor(Color.parseColor("#F97316"));
+        setSearchAffordanceColor(ContextCompat.getColor(getActivity(), R.color.primary_orange));
     }
 
     private void loadRows() {
-        mRowsAdapter = new ArrayObjectAdapter(new ListRowPresenter());
+        ListRowPresenter listRowPresenter = new ListRowPresenter(FocusHighlight.ZOOM_FACTOR_SMALL, false);
+        listRowPresenter.setShadowEnabled(true);
+        listRowPresenter.setSelectEffectEnabled(true);
+        mRowsAdapter = new ArrayObjectAdapter(listRowPresenter);
         CardPresenter cardPresenter = new CardPresenter();
 
         // Row 0: Live Sports Matches
@@ -314,12 +318,44 @@ public class MainFragment extends BrowseSupportFragment {
         if (getActivity() == null) return;
 
         Glide.with(getActivity())
+                .asBitmap()
                 .load(uri)
                 .centerCrop()
-                .into(new CustomTarget<Drawable>(mMetrics.widthPixels, mMetrics.heightPixels) {
+                .into(new CustomTarget<Bitmap>(mMetrics.widthPixels, mMetrics.heightPixels) {
                     @Override
-                    public void onResourceReady(Drawable resource, Transition<? super Drawable> transition) {
-                        mBackgroundManager.setDrawable(resource);
+                    public void onResourceReady(Bitmap resource, Transition<? super Bitmap> transition) {
+                        if (getActivity() == null) return;
+                        try {
+                            Bitmap darkBitmap = Bitmap.createBitmap(resource.getWidth(), resource.getHeight(), Bitmap.Config.ARGB_8888);
+                            android.graphics.Canvas canvas = new android.graphics.Canvas(darkBitmap);
+                            canvas.drawBitmap(resource, 0, 0, null);
+
+                            // Dark cinema vignette
+                            android.graphics.Paint paint = new android.graphics.Paint();
+                            android.graphics.LinearGradient gradient = new android.graphics.LinearGradient(
+                                    0, 0, 0, resource.getHeight(),
+                                    new int[]{Color.parseColor("#33000000"), Color.parseColor("#B3080A10"), Color.parseColor("#FC080A10")},
+                                    new float[]{0f, 0.55f, 1f},
+                                    android.graphics.Shader.TileMode.CLAMP
+                            );
+                            paint.setShader(gradient);
+                            canvas.drawRect(0, 0, resource.getWidth(), resource.getHeight(), paint);
+
+                            // Dark left side gradient where category headers reside
+                            android.graphics.Paint leftPaint = new android.graphics.Paint();
+                            android.graphics.LinearGradient leftGrad = new android.graphics.LinearGradient(
+                                    0, 0, resource.getWidth() * 0.45f, 0,
+                                    new int[]{Color.parseColor("#F5080A10"), Color.parseColor("#99080A10"), Color.TRANSPARENT},
+                                    new float[]{0f, 0.5f, 1f},
+                                    android.graphics.Shader.TileMode.CLAMP
+                            );
+                            leftPaint.setShader(leftGrad);
+                            canvas.drawRect(0, 0, resource.getWidth(), resource.getHeight(), leftPaint);
+
+                            mBackgroundManager.setDrawable(new android.graphics.drawable.BitmapDrawable(getResources(), darkBitmap));
+                        } catch (Exception e) {
+                            mBackgroundManager.setDrawable(new android.graphics.drawable.BitmapDrawable(getResources(), resource));
+                        }
                     }
 
                     @Override

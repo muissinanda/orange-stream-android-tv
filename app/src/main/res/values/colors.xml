@@ -1,5 +1,16 @@
 <resources>
-    <color name="bg_dark">#07080C</color>
-    <color name="primary_orange">#F97316</color>
-    <color name="accent_orange">#EA580C</color>
+    <color name="bg_dark">#080A10</color>
+    <color name="bg_surface">#101522</color>
+    <color name="bg_surface_focused">#241B13</color>
+    <color name="primary_orange">#FF6B00</color>
+    <color name="accent_orange">#FF8800</color>
+    <color name="live_red">#EF4444</color>
+    <color name="live_green">#10B981</color>
+    <color name="live_blue">#38BDF8</color>
+    <color name="live_amber">#F59E0B</color>
+    <color name="text_primary">#F8FAFC</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="text_muted">#64748B</color>
+    <color name="card_border">#1E2638</color>
+    <color name="card_focus_border">#FF6B00</color>
 </resources>

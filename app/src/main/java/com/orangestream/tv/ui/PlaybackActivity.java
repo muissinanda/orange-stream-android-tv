@@ -17,7 +17,10 @@ import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.fragment.app.FragmentActivity;
 import androidx.media3.common.MediaItem;
@@ -46,6 +49,14 @@ public class PlaybackActivity extends FragmentActivity {
     private WebView mWebView;
     private ExoPlayer mPlayer;
     private ProgressBar mLoadingSpinner;
+    private LinearLayout mLoadingLayout;
+    private TextView mLoadingTitle;
+    private TextView mLoadingSubtitle;
+    private View mTopControlBar;
+    private ImageButton mBtnBack;
+    private TextView mPlayerTitleText;
+    private TextView mPlayerStatusText;
+    private ImageButton mBtnRefresh;
     private Movie mMovie;
     private String mServer = "vidlink";
     private View mCustomView;
@@ -188,6 +199,42 @@ public class PlaybackActivity extends FragmentActivity {
             .followSslRedirects(true)
             .build();
 
+    private final Runnable mHideControlsRunnable = () -> {
+        if (mTopControlBar != null && mTopControlBar.getVisibility() == View.VISIBLE) {
+            mTopControlBar.animate().alpha(0f).setDuration(300).withEndAction(() -> {
+                mTopControlBar.setVisibility(View.GONE);
+            }).start();
+        }
+    };
+
+    private void showControls() {
+        if (mTopControlBar == null) return;
+        mUiHandler.removeCallbacks(mHideControlsRunnable);
+        mTopControlBar.setVisibility(View.VISIBLE);
+        mTopControlBar.animate().alpha(1f).setDuration(250).start();
+        mUiHandler.postDelayed(mHideControlsRunnable, 4000);
+    }
+
+    private void toggleControls() {
+        if (mTopControlBar == null) return;
+        if (mTopControlBar.getVisibility() == View.VISIBLE) {
+            mUiHandler.removeCallbacks(mHideControlsRunnable);
+            mTopControlBar.animate().alpha(0f).setDuration(250).withEndAction(() -> {
+                mTopControlBar.setVisibility(View.GONE);
+            }).start();
+        } else {
+            showControls();
+        }
+    }
+
+    private void setLoadingVisible(boolean visible) {
+        if (mLoadingLayout != null) {
+            mLoadingLayout.setVisibility(visible ? View.VISIBLE : View.GONE);
+        } else if (mLoadingSpinner != null) {
+            mLoadingSpinner.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -201,7 +248,53 @@ public class PlaybackActivity extends FragmentActivity {
         mPlayerView = findViewById(R.id.playerView);
         mWebView = findViewById(R.id.playerWebView);
         mLoadingSpinner = findViewById(R.id.loadingSpinner);
+        mLoadingLayout = findViewById(R.id.loadingLayout);
+        mLoadingTitle = findViewById(R.id.loadingTitle);
+        mLoadingSubtitle = findViewById(R.id.loadingSubtitle);
+        mTopControlBar = findViewById(R.id.topControlBar);
+        mBtnBack = findViewById(R.id.btnBack);
+        mPlayerTitleText = findViewById(R.id.playerTitleText);
+        mPlayerStatusText = findViewById(R.id.playerStatusText);
+        mBtnRefresh = findViewById(R.id.btnRefresh);
 
+        if (mMovie != null) {
+            String title = mMovie.getDisplayTitle();
+            if (mLoadingTitle != null) mLoadingTitle.setText(title);
+            if (mPlayerTitleText != null) mPlayerTitleText.setText(title);
+            if (mPlayerStatusText != null) {
+                if (mMovie.isSport()) {
+                    mPlayerStatusText.setText(mMovie.getSportTimeFormatted());
+                } else {
+                    mPlayerStatusText.setText("🔴 SIARAN LANGSUNG • KUALITAS HD");
+                }
+            }
+        }
+
+        View root = findViewById(R.id.playbackRoot);
+        if (root != null) {
+            root.setOnClickListener(v -> toggleControls());
+        }
+
+        if (mBtnBack != null) {
+            mBtnBack.setOnClickListener(v -> {
+                releasePlayer();
+                finish();
+            });
+        }
+
+        if (mBtnRefresh != null) {
+            mBtnRefresh.setOnClickListener(v -> {
+                Toast.makeText(this, "Memuat ulang siaran...", Toast.LENGTH_SHORT).show();
+                showControls();
+                if (mWebView != null && mWebView.getVisibility() == View.VISIBLE) {
+                    mWebView.reload();
+                } else {
+                    startPlayback();
+                }
+            });
+        }
+
+        showControls();
         startPlayback();
     }
 
@@ -211,7 +304,7 @@ public class PlaybackActivity extends FragmentActivity {
             return;
         }
 
-        mLoadingSpinner.setVisibility(View.VISIBLE);
+        setLoadingVisible(true);
 
         String streamUrl = mMovie.getStreamUrl();
 
@@ -276,6 +369,7 @@ public class PlaybackActivity extends FragmentActivity {
                 .build();
 
         mPlayerView.setPlayer(mPlayer);
+        mPlayerView.setOnClickListener(v -> toggleControls());
 
         Uri videoUri = Uri.parse(url);
         MediaItem mediaItem = MediaItem.fromUri(videoUri);
@@ -287,9 +381,9 @@ public class PlaybackActivity extends FragmentActivity {
             @Override
             public void onPlaybackStateChanged(int playbackState) {
                 if (playbackState == Player.STATE_BUFFERING) {
-                    mLoadingSpinner.setVisibility(View.VISIBLE);
+                    setLoadingVisible(true);
                 } else if (playbackState == Player.STATE_READY) {
-                    mLoadingSpinner.setVisibility(View.GONE);
+                    setLoadingVisible(false);
                 } else if (playbackState == Player.STATE_ENDED) {
                     finish();
                 }
@@ -297,7 +391,7 @@ public class PlaybackActivity extends FragmentActivity {
 
             @Override
             public void onPlayerError(PlaybackException error) {
-                mLoadingSpinner.setVisibility(View.GONE);
+                setLoadingVisible(false);
                 Toast.makeText(PlaybackActivity.this, "Gagal memutar siaran: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
@@ -447,14 +541,14 @@ public class PlaybackActivity extends FragmentActivity {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
-                mLoadingSpinner.setVisibility(View.VISIBLE);
+                setLoadingVisible(true);
                 view.evaluateJavascript(FULL_INJECTION_SCRIPT, null);
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                mLoadingSpinner.setVisibility(View.GONE);
+                setLoadingVisible(false);
                 view.evaluateJavascript(FULL_INJECTION_SCRIPT, null);
 
                 long[] retryDelays = {500, 1200, 2200, 3500, 5000};
@@ -480,11 +574,18 @@ public class PlaybackActivity extends FragmentActivity {
             }
         });
 
+        mWebView.setOnTouchListener((v, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                toggleControls();
+            }
+            return false;
+        });
+
         mWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 if (newProgress >= 70) {
-                    mLoadingSpinner.setVisibility(View.GONE);
+                    setLoadingVisible(false);
                 }
             }
 
@@ -551,6 +652,11 @@ public class PlaybackActivity extends FragmentActivity {
             }
             releasePlayer();
             finish();
+            return true;
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            toggleControls();
             return true;
         }
 

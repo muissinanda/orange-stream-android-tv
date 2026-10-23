@@ -43,15 +43,32 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       with:
-        tag_name: v3.1-autoplay-fix
-        name: "Streamed TV v3.1 (Fix Jadwal & Jam Kickoff streamed.st + Autoplay Otomatis)"
+        tag_name: v3.2-modern-ui
+        name: "Streamed TV v3.2 (Super Modern UI/UX - Glassmorphism, Cinematic Backdrop & Touch Controls)"
         body: |
-          ### 🏆 Streamed TV v3.1 - Update Akurasi Jadwal & Autoplay Otomatis
-          - ⏰ **Akurasi Jam & Tanggal Tayang**: Menampilkan waktu kick-off nyata sesuai API streamed.st yang disesuaikan ke waktu lokal/WIB (cth: "🔴 SEDANG LIVE • 17:30 WIB", "Hari ini, 20:00 WIB", "Besok, 02:00 WIB", dan "⚡ Saluran TV 24/7").
-          - ▶️ **Autoplay Otomatis**: Streaming langsung otomatis diputar saat kartu dipilih/dibuka tanpa perlu klik tombol play manual di layar.
-          - 🎮 **Navigasi TV Remote Lebih Fleksibel**: Tombol DPAD Center / OK / Play-Pause remote TV kini dapat digunakan untuk toggle play/pause langsung pada pemutar web.
-          - 🛡️ **Bypass Anti-Sandbox & Proteksi embed.st**: Menggunakan injeksi native WebViewCompat engine Chromium.
-          - 📱 **100% Native Multi-Device**: Kompatibel di HP Samsung/Android dan Android TV Xiaomi.
+          ### ✨ Streamed TV v3.2 - Upgrade UI/UX Modern & Sinematik
+          - 🎨 **Desain Kartu Premium (Card Visuals)**:
+            - Sudut kartu melengkung modern (*rounded corners 12dp*) dengan *stroke border* dinamis.
+            - Efek neon *glowing border* oranye (`#FF6B00`) & elevasi bayangan halus saat kartu disorot remote TV atau disentuh di HP.
+          - 🏷️ **Status Tayang Warna-Warni (Rich Status Badges)**:
+            - Pertandingan **🔴 SEDANG LIVE**: Teks merah menyala tebal (*Vivid Red*).
+            - Saluran **⚡ Saluran TV 24/7**: Teks emas (*Amber Gold*).
+            - Jadwal **Hari ini**: Teks hijau emerald (*Emerald Green*).
+            - Jadwal **Besok**: Teks biru cerah (*Sky Blue*).
+          - 🎬 **Cinematic Backdrop & Vignette**:
+            - Background layar otomatis menyesuaikan poster pertandingan yang sedang dipilih dengan efek *vignette cinema gradient* gelap yang elegan (seperti Apple TV / Disney+), menjaga kenyamanan mata dan keterbacaan teks.
+          - 🔍 **Smooth Focus Zoom Highlight**:
+            - Baris Leanback TV kini memiliki animasi *smooth zoom scale* dan *drop shadow* saat berpindah antar kartu menggunakan D-Pad remote.
+          - 📱 **Mobile Touch HUD & Quick Controls (Khusus HP & TV)**:
+            - Mengetuk layar saat streaming menampilkan *Top Control Bar* transparan (*Glassmorphism*):
+              - Tombol **← Kembali** untuk keluar cepat tanpa perlu gesture swipe sistem.
+              - Judul siaran & status kualitas HD.
+              - Tombol **🔄 Muat Ulang** untuk reload stream seketika jika buffer macet.
+              - Otomatis hilang mulus (*fade out*) dalam 4 detik.
+            - Tampilan **Loading HUD Glassmorphism** baru di tengah layar saat stream dipersiapkan.
+          - 🎮 **D-Pad Remote Pintar (Android TV)**:
+            - Tekan tombol **Atas / Bawah** untuk menampilkan/menyembunyikan bar kontrol.
+            - Tekan **OK / Center** untuk Pause / Play siaran web.
         files: |
           OrangeStreamTV-PureNative.apk
       env:
