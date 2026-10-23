@@ -68,58 +68,42 @@ public class MainFragment extends BrowseSupportFragment {
         mRowsAdapter = new ArrayObjectAdapter(new ListRowPresenter());
         CardPresenter cardPresenter = new CardPresenter();
 
-        // Row 0: Trending
-        ArrayObjectAdapter trendingAdapter = new ArrayObjectAdapter(cardPresenter);
-        HeaderItem headerTrending = new HeaderItem(0, "🔥 Sedang Tren (Trending Hari Ini)");
-        mRowsAdapter.add(new ListRow(headerTrending, trendingAdapter));
-        fetchTrending(trendingAdapter);
+        // Row 0: Live Sports Matches
+        ArrayObjectAdapter sportsAdapter = new ArrayObjectAdapter(cardPresenter);
+        HeaderItem headerSports = new HeaderItem(0, "🔴 Siaran Langsung & Pertandingan Hari Ini");
+        mRowsAdapter.add(new ListRow(headerSports, sportsAdapter));
 
         // Row 1: 24/7 Saluran TV Olahraga
         ArrayObjectAdapter channelsAdapter = new ArrayObjectAdapter(cardPresenter);
         HeaderItem headerChannels = new HeaderItem(1, "⚡ Saluran TV Olahraga 24/7 Non-Stop");
         mRowsAdapter.add(new ListRow(headerChannels, channelsAdapter));
 
-        // Row 2: Live Sports Matches
-        ArrayObjectAdapter sportsAdapter = new ArrayObjectAdapter(cardPresenter);
-        HeaderItem headerSports = new HeaderItem(2, "⚽ Siaran Langsung Olahraga (Live Sports)");
-        mRowsAdapter.add(new ListRow(headerSports, sportsAdapter));
-        fetchLiveSportsAndChannels(sportsAdapter, channelsAdapter);
+        // Row 2: Football
+        ArrayObjectAdapter footballAdapter = new ArrayObjectAdapter(cardPresenter);
+        HeaderItem headerFootball = new HeaderItem(2, "⚽ Sepak Bola (Football)");
+        mRowsAdapter.add(new ListRow(headerFootball, footballAdapter));
 
-        // Row 3: Popular Movies
-        ArrayObjectAdapter moviesAdapter = new ArrayObjectAdapter(cardPresenter);
-        HeaderItem headerMovies = new HeaderItem(3, "🎬 Film Bioskop Terpopuler");
-        mRowsAdapter.add(new ListRow(headerMovies, moviesAdapter));
-        fetchPopularMovies(moviesAdapter);
+        // Row 3: Basketball
+        ArrayObjectAdapter basketballAdapter = new ArrayObjectAdapter(cardPresenter);
+        HeaderItem headerBasketball = new HeaderItem(3, "🏀 Basket (NBA & Liga Dunia)");
+        mRowsAdapter.add(new ListRow(headerBasketball, basketballAdapter));
 
-        // Row 4: Popular Series
-        ArrayObjectAdapter seriesAdapter = new ArrayObjectAdapter(cardPresenter);
-        HeaderItem headerSeries = new HeaderItem(4, "📺 Serial TV Pilihan");
-        mRowsAdapter.add(new ListRow(headerSeries, seriesAdapter));
-        fetchPopularSeries(seriesAdapter);
+        // Row 4: Motorsport
+        ArrayObjectAdapter motorAdapter = new ArrayObjectAdapter(cardPresenter);
+        HeaderItem headerMotor = new HeaderItem(4, "🏎️ Motor Sports (MotoGP / Formula 1)");
+        mRowsAdapter.add(new ListRow(headerMotor, motorAdapter));
 
-        // Row 5: Action Movies
-        ArrayObjectAdapter actionAdapter = new ArrayObjectAdapter(cardPresenter);
-        HeaderItem headerAction = new HeaderItem(5, "💥 Film Aksi Blockbuster");
-        mRowsAdapter.add(new ListRow(headerAction, actionAdapter));
-        fetchMoviesByGenre("28", actionAdapter);
+        // Row 5: Combat Sports
+        ArrayObjectAdapter fightAdapter = new ArrayObjectAdapter(cardPresenter);
+        HeaderItem headerFight = new HeaderItem(5, "🥊 Pertarungan (UFC, Tinju & MMA)");
+        mRowsAdapter.add(new ListRow(headerFight, fightAdapter));
 
-        // Row 6: Anime
-        ArrayObjectAdapter animeAdapter = new ArrayObjectAdapter(cardPresenter);
-        HeaderItem headerAnime = new HeaderItem(6, "🎌 Anime & Animasi Populer");
-        mRowsAdapter.add(new ListRow(headerAnime, animeAdapter));
-        fetchMoviesByGenre("16", animeAdapter);
+        // Row 6: Tennis & Other Sports
+        ArrayObjectAdapter otherAdapter = new ArrayObjectAdapter(cardPresenter);
+        HeaderItem headerOther = new HeaderItem(6, "🎾 Tenis & Olahraga Pilihan Lainnya");
+        mRowsAdapter.add(new ListRow(headerOther, otherAdapter));
 
-        // Row 7: Korean Drama
-        ArrayObjectAdapter kdramaAdapter = new ArrayObjectAdapter(cardPresenter);
-        HeaderItem headerKdrama = new HeaderItem(7, "🇰🇷 Drama Korea (K-Drama)");
-        mRowsAdapter.add(new ListRow(headerKdrama, kdramaAdapter));
-        fetchKdrama(kdramaAdapter);
-
-        // Row 8: Horror Movies
-        ArrayObjectAdapter horrorAdapter = new ArrayObjectAdapter(cardPresenter);
-        HeaderItem headerHorror = new HeaderItem(8, "👻 Film Horor Pilihan");
-        mRowsAdapter.add(new ListRow(headerHorror, horrorAdapter));
-        fetchMoviesByGenre("27", horrorAdapter);
+        fetchLiveSportsAndChannels(sportsAdapter, channelsAdapter, footballAdapter, basketballAdapter, motorAdapter, fightAdapter, otherAdapter);
 
         setAdapter(mRowsAdapter);
     }
@@ -202,7 +186,15 @@ public class MainFragment extends BrowseSupportFragment {
         });
     }
 
-    private void fetchLiveSportsAndChannels(ArrayObjectAdapter sportsAdapter, ArrayObjectAdapter channelsAdapter) {
+    private void fetchLiveSportsAndChannels(
+            ArrayObjectAdapter sportsAdapter,
+            ArrayObjectAdapter channelsAdapter,
+            ArrayObjectAdapter footballAdapter,
+            ArrayObjectAdapter basketballAdapter,
+            ArrayObjectAdapter motorAdapter,
+            ArrayObjectAdapter fightAdapter,
+            ArrayObjectAdapter otherAdapter
+    ) {
         ApiClient.getSportsService().getAllMatches().enqueue(new Callback<List<SportsMatch>>() {
             @Override
             public void onResponse(Call<List<SportsMatch>> call, Response<List<SportsMatch>> response) {
@@ -215,14 +207,32 @@ public class MainFragment extends BrowseSupportFragment {
                         sportItem.setCategory(match.getCategory());
                         sportItem.setPosterPath(match.getPoster());
                         sportItem.setBackdropPath(match.getPoster());
-                        sportItem.setStreamUrl("https://embed.st/embed/" + (match.getCategory() != null ? match.getCategory() : "live") + "/" + match.getId() + "/1");
+
+                        String streamUrl = "https://embed.st/embed/" + (match.getCategory() != null ? match.getCategory() : "live") + "/" + match.getId() + "/1";
+                        if (match.getSources() != null && !match.getSources().isEmpty()) {
+                            SportsMatch.SourceItem src = match.getSources().get(0);
+                            streamUrl = "https://embed.st/embed/" + src.getSource() + "/" + src.getId() + "/1";
+                        }
+                        sportItem.setStreamUrl(streamUrl);
+
+                        String cat = match.getCategory() != null ? match.getCategory().toLowerCase() : "";
 
                         if (match.getDate() <= 0) {
-                            // 24/7 Channel
                             channelsAdapter.add(sportItem);
                         } else {
-                            // Live & Upcoming Match
                             sportsAdapter.add(sportItem);
+                        }
+
+                        if (cat.contains("football") || cat.contains("soccer")) {
+                            footballAdapter.add(sportItem);
+                        } else if (cat.contains("basketball")) {
+                            basketballAdapter.add(sportItem);
+                        } else if (cat.contains("motor") || cat.contains("f1") || cat.contains("nascar") || cat.contains("rally")) {
+                            motorAdapter.add(sportItem);
+                        } else if (cat.contains("fight") || cat.contains("ufc") || cat.contains("boxing") || cat.contains("mma")) {
+                            fightAdapter.add(sportItem);
+                        } else {
+                            otherAdapter.add(sportItem);
                         }
                     }
                 }

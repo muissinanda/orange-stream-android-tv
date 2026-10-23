@@ -25,11 +25,14 @@ import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
 import com.orangestream.tv.R;
 import com.orangestream.tv.model.Movie;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
@@ -51,9 +54,7 @@ public class PlaybackActivity extends FragmentActivity {
     private static final String DESKTOP_UA =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
-    // Synchronous polyfill and style injected into EVERY HTML frame (main frame and nested iframes)
-    private static final String SYNCHRONOUS_INJECTION =
-            "<script>" +
+    private static final String POLYFILL_SCRIPT =
             "(function() {" +
             "  var dummyWin = {" +
             "    closed: false," +
@@ -80,8 +81,22 @@ public class PlaybackActivity extends FragmentActivity {
             "    localStorage.removeItem('isSandboxed');" +
             "    sessionStorage.removeItem('isSandboxed');" +
             "  } catch(e) {}" +
-            "})();" +
-            "</script>" +
+            "  try {" +
+            "    var obs = new MutationObserver(function() {" +
+            "      var el = document.body;" +
+            "      if (el && el.innerText && el.innerText.indexOf('Remove sandbox') !== -1) {" +
+            "        el.innerHTML = '<div id=\"player\" style=\"height:100vh;width:100vw;\"></div>';" +
+            "      }" +
+            "    });" +
+            "    if (document.documentElement) {" +
+            "      obs.observe(document.documentElement, { childList: true, subtree: true });" +
+            "    }" +
+            "  } catch(e) {}" +
+            "})();";
+
+    // Synchronous polyfill and style injected into EVERY HTML frame (main frame and nested iframes)
+    private static final String SYNCHRONOUS_INJECTION =
+            "<script>" + POLYFILL_SCRIPT + "</script>" +
             "<style>" +
             "  #sbxErr, #sbxwo, [id*='sbx'], div[id*='sbx']," +
             "  div[style*='2147483647'], div[style*='7fffffff'] {" +
@@ -247,6 +262,12 @@ public class PlaybackActivity extends FragmentActivity {
         settings.setSupportMultipleWindows(true);
         settings.setUserAgentString(DESKTOP_UA);
 
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            HashSet<String> rules = new HashSet<>();
+            rules.add("*");
+            WebViewCompat.addDocumentStartJavaScript(mWebView, POLYFILL_SCRIPT, rules);
+        }
+
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
@@ -352,9 +373,17 @@ public class PlaybackActivity extends FragmentActivity {
             }
 
             @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                mLoadingSpinner.setVisibility(View.VISIBLE);
+                view.evaluateJavascript(POLYFILL_SCRIPT, null);
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 mLoadingSpinner.setVisibility(View.GONE);
+                view.evaluateJavascript(POLYFILL_SCRIPT, null);
             }
 
             @Override

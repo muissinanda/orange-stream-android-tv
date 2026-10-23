@@ -43,16 +43,14 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       with:
-        tag_name: v2.3-native
-        name: "Orange Stream TV v2.3 (Bypass Sandbox Error, Subframe Interceptor & VidLink Pro)"
+        tag_name: v3.0-sports
+        name: "Streamed TV v3.0 (Pure Sports - Zero Movies, Native AndroidX WebKit Sandbox Fix)"
         body: |
-          ### 🚀 Orange Stream TV v2.3 - Pure Native Android TV APK
-          - **Fix Tuntas Error "Remove sandbox attributes on the iframe tag"**: Intersepsi synchronous HTML di seluruh frame (main frame & subframe iframe) via `shouldInterceptRequest`.
-          - **Penghapusan Atribut Sandbox Otomatis**: Secara otomatis menghapus atribut `sandbox` pada setiap tag iframe sebelum dirender browser WebView.
-          - **Universal window.open Polyfill**: Memastikan `window.open` mengembalikan valid window proxy sehingga skrip player tidak gagal atau menampilkan error banner.
-          - **Integrasi VidLink Pro sebagai Server 1**: Menyamakan dengan website utama untuk streaming film & TV series kualitas Super HD tanpa iklan pop-up.
-          - **Blokir Iklan & Redirect Tracker**: Memblokir skrip popunder dan iklan yang mengganggu kenyamanan menonton di TV.
-          - **Full Xiaomi Mi TV 4A & D-Pad Remote Support**: Navigasi presisi 100% menggunakan tombol panah remote TV tanpa perlu mode kursor / mouse.
+          ### 🏆 Streamed TV v3.0 - 100% Khusus Olahraga (Bebas Film)
+          - **Murni Olahraga streamed.st**: Menghapus seluruh baris film bioskop dan drama. Aplikasi sekarang 100% murni siaran langsung olahraga dan saluran TV olahraga 24/7.
+          - **Fix Tuntas Sandbox Error**: Menggunakan Google `WebViewCompat.addDocumentStartJavaScript` untuk meng-inject window.open mock polyfill langsung di level Chromium engine sebelum script apapun dijalankan.
+          - **Bypass Proteksi embed.st**: Melucuti error 'Remove sandbox attributes on the iframe tag'.
+          - **Multi-Device Support**: Berjalan mulus di HP Android (layar sentuh) dan Android TV (remote D-Pad).
         files: |
           OrangeStreamTV-PureNative.apk
       env:
