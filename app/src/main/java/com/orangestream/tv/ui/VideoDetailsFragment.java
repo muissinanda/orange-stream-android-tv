@@ -20,10 +20,11 @@ import com.orangestream.tv.presenter.DetailsDescriptionPresenter;
 
 public class VideoDetailsFragment extends DetailsSupportFragment {
 
-    private static final int ACTION_PLAY_AUTOEMBED = 1;
-    private static final int ACTION_PLAY_MULTIEMBED = 2;
-    private static final int ACTION_PLAY_TWOEMBED = 3;
-    private static final int ACTION_PLAY_VIDSRC = 4;
+    private static final int ACTION_PLAY_VIDLINK = 1;
+    private static final int ACTION_PLAY_AUTOEMBED = 2;
+    private static final int ACTION_PLAY_MULTIEMBED = 3;
+    private static final int ACTION_PLAY_TWOEMBED = 4;
+    private static final int ACTION_PLAY_VIDSRC = 5;
 
     private Movie mSelectedMovie;
     private ArrayObjectAdapter mAdapter;
@@ -69,8 +70,9 @@ public class VideoDetailsFragment extends DetailsSupportFragment {
         detailsPresenter.setInitialState(FullWidthDetailsOverviewRowPresenter.STATE_FULL);
 
         detailsPresenter.setOnActionClickedListener(action -> {
-            String server = "autoembed";
-            if (action.getId() == ACTION_PLAY_MULTIEMBED) server = "multiembed";
+            String server = "vidlink";
+            if (action.getId() == ACTION_PLAY_AUTOEMBED) server = "autoembed";
+            else if (action.getId() == ACTION_PLAY_MULTIEMBED) server = "multiembed";
             else if (action.getId() == ACTION_PLAY_TWOEMBED) server = "twoembed";
             else if (action.getId() == ACTION_PLAY_VIDSRC) server = "vidsrc";
 
@@ -88,10 +90,11 @@ public class VideoDetailsFragment extends DetailsSupportFragment {
 
         // Action Buttons (Remote D-Pad Friendly)
         SparseArrayObjectAdapter actionAdapter = new SparseArrayObjectAdapter();
-        actionAdapter.set(ACTION_PLAY_AUTOEMBED, new Action(ACTION_PLAY_AUTOEMBED, "▶ PUTAR SEKARANG", "Server 1 HD"));
-        actionAdapter.set(ACTION_PLAY_MULTIEMBED, new Action(ACTION_PLAY_MULTIEMBED, "SERVER 2", "MultiEmbed"));
-        actionAdapter.set(ACTION_PLAY_TWOEMBED, new Action(ACTION_PLAY_TWOEMBED, "SERVER 3", "2Embed"));
-        actionAdapter.set(ACTION_PLAY_VIDSRC, new Action(ACTION_PLAY_VIDSRC, "SERVER 4", "Vidsrc"));
+        actionAdapter.set(ACTION_PLAY_VIDLINK, new Action(ACTION_PLAY_VIDLINK, "▶ PUTAR SEKARANG", "VidLink Pro (Super HD)"));
+        actionAdapter.set(ACTION_PLAY_AUTOEMBED, new Action(ACTION_PLAY_AUTOEMBED, "SERVER 2", "AutoEmbed Fast"));
+        actionAdapter.set(ACTION_PLAY_MULTIEMBED, new Action(ACTION_PLAY_MULTIEMBED, "SERVER 3", "MultiEmbed Global"));
+        actionAdapter.set(ACTION_PLAY_TWOEMBED, new Action(ACTION_PLAY_TWOEMBED, "SERVER 4", "2Embed"));
+        actionAdapter.set(ACTION_PLAY_VIDSRC, new Action(ACTION_PLAY_VIDSRC, "SERVER 5", "VidSrc Premium"));
         detailsRow.setActionsAdapter(actionAdapter);
 
         // Load Poster

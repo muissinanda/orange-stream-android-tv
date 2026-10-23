@@ -43,14 +43,16 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       with:
-        tag_name: v2.2-native
-        name: "Orange Stream TV v2.2 (Fix Sandbox Error & Anti-Adblock Bypass)"
+        tag_name: v2.3-native
+        name: "Orange Stream TV v2.3 (Bypass Sandbox Error, Subframe Interceptor & VidLink Pro)"
         body: |
-          ### 🚀 Orange Stream TV v2.2 - Pure Native Android TV APK
-          - **Bypass Error "Remove sandbox attributes on the iframe tag"**: Penanganan window.open polyfill & WebChromeClient onCreateWindow bypass untuk server embed.st, autoembed, dll.
-          - **Third-Party Cookies & WebStorage Enabled**: Mendukung streaming CDN cross-origin.
-          - **User-Agent Optimization**: Menggunakan Clean Chrome UA untuk menghindari deteksi WebView / bot protection.
-          - **Full Xiaomi Mi TV 4A & D-Pad Remote Support**: Navigasi presisi tanpa mouse pointer / kursor.
+          ### 🚀 Orange Stream TV v2.3 - Pure Native Android TV APK
+          - **Fix Tuntas Error "Remove sandbox attributes on the iframe tag"**: Intersepsi synchronous HTML di seluruh frame (main frame & subframe iframe) via `shouldInterceptRequest`.
+          - **Penghapusan Atribut Sandbox Otomatis**: Secara otomatis menghapus atribut `sandbox` pada setiap tag iframe sebelum dirender browser WebView.
+          - **Universal window.open Polyfill**: Memastikan `window.open` mengembalikan valid window proxy sehingga skrip player tidak gagal atau menampilkan error banner.
+          - **Integrasi VidLink Pro sebagai Server 1**: Menyamakan dengan website utama untuk streaming film & TV series kualitas Super HD tanpa iklan pop-up.
+          - **Blokir Iklan & Redirect Tracker**: Memblokir skrip popunder dan iklan yang mengganggu kenyamanan menonton di TV.
+          - **Full Xiaomi Mi TV 4A & D-Pad Remote Support**: Navigasi presisi 100% menggunakan tombol panah remote TV tanpa perlu mode kursor / mouse.
         files: |
           OrangeStreamTV-PureNative.apk
       env:
