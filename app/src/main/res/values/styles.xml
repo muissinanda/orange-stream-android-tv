@@ -13,11 +13,6 @@
         <item name="android:windowFullscreen">true</item>
         <item name="rowHeaderStyle">@style/CustomRowHeaderStyle</item>
         <item name="headerStyle">@style/CustomHeaderItemStyle</item>
-        <item name="headersStyle">@style/CustomHeadersStyle</item>
-    </style>
-
-    <style name="CustomHeadersStyle" parent="Widget.Leanback.Headers">
-        <item name="android:background">#090C13</item>
     </style>
 
     <style name="CustomRowHeaderStyle" parent="Widget.Leanback.Row.Header">
