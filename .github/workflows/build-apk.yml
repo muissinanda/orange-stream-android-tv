@@ -61,10 +61,5 @@ jobs:
             - Remote D-Pad: OK/Center untuk Play/Pause, Atas/Bawah untuk info HUD bar.
         files: |
           OrangeStreamTV-PureNative.apk
-          - 📱 **Mobile Touch Controls & Full Android TV Support**:
-            - Sentuh layar untuk Top Bar (tombol Kembali, Reload, Judul).
-            - 100% Navigasi remote Xiaomi Mi TV 4A.
-        files: |
-          OrangeStreamTV-PureNative.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
