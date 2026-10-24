@@ -1,12 +1,14 @@
 package com.orangestream.tv.ui;
 
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
@@ -26,7 +28,11 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.ui.PlayerView;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
@@ -35,6 +41,7 @@ import com.orangestream.tv.model.Movie;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +54,7 @@ public class PlaybackActivity extends FragmentActivity {
 
     private PlayerView mPlayerView;
     private WebView mWebView;
+    private FrameLayout mCustomViewContainer;
     private ExoPlayer mPlayer;
     private ProgressBar mLoadingSpinner;
     private LinearLayout mLoadingLayout;
@@ -56,11 +64,13 @@ public class PlaybackActivity extends FragmentActivity {
     private ImageButton mBtnBack;
     private TextView mPlayerTitleText;
     private TextView mPlayerStatusText;
+    private TextView mTvEngineBadge;
     private ImageButton mBtnRefresh;
     private Movie mMovie;
     private String mServer = "vidlink";
     private View mCustomView;
     private WebChromeClient.CustomViewCallback mCustomViewCallback;
+    private volatile boolean mHasSwitchedToNative = false;
     private final android.os.Handler mUiHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     private static final String DESKTOP_UA =
@@ -181,6 +191,19 @@ public class PlaybackActivity extends FragmentActivity {
     private static final String SYNCHRONOUS_INJECTION =
             "<script>" + FULL_INJECTION_SCRIPT + "</script>" +
             "<style>" +
+            "  html, body, #player, .jwplayer, video {" +
+            "    width: 100% !important;" +
+            "    height: 100% !important;" +
+            "    max-width: 100vw !important;" +
+            "    max-height: 100vh !important;" +
+            "    position: absolute !important;" +
+            "    top: 0 !important;" +
+            "    left: 0 !important;" +
+            "    margin: 0 !important;" +
+            "    padding: 0 !important;" +
+            "    background: #000 !important;" +
+            "    object-fit: contain !important;" +
+            "  }" +
             "  #sbxErr, #sbxwo, [id*='sbx'], div[id*='sbx']," +
             "  div[style*='2147483647'], div[style*='7fffffff'] {" +
             "    display: none !important;" +
@@ -247,6 +270,7 @@ public class PlaybackActivity extends FragmentActivity {
 
         mPlayerView = findViewById(R.id.playerView);
         mWebView = findViewById(R.id.playerWebView);
+        mCustomViewContainer = findViewById(R.id.customViewContainer);
         mLoadingSpinner = findViewById(R.id.loadingSpinner);
         mLoadingLayout = findViewById(R.id.loadingLayout);
         mLoadingTitle = findViewById(R.id.loadingTitle);
@@ -255,6 +279,7 @@ public class PlaybackActivity extends FragmentActivity {
         mBtnBack = findViewById(R.id.btnBack);
         mPlayerTitleText = findViewById(R.id.playerTitleText);
         mPlayerStatusText = findViewById(R.id.playerStatusText);
+        mTvEngineBadge = findViewById(R.id.tvEngineBadge);
         mBtnRefresh = findViewById(R.id.btnRefresh);
 
         if (mMovie != null) {
@@ -285,12 +310,9 @@ public class PlaybackActivity extends FragmentActivity {
         if (mBtnRefresh != null) {
             mBtnRefresh.setOnClickListener(v -> {
                 Toast.makeText(this, "Memuat ulang siaran...", Toast.LENGTH_SHORT).show();
+                mHasSwitchedToNative = false;
                 showControls();
-                if (mWebView != null && mWebView.getVisibility() == View.VISIBLE) {
-                    mWebView.reload();
-                } else {
-                    startPlayback();
-                }
+                startPlayback();
             });
         }
 
@@ -304,6 +326,7 @@ public class PlaybackActivity extends FragmentActivity {
             return;
         }
 
+        mHasSwitchedToNative = false;
         setLoadingVisible(true);
 
         String streamUrl = mMovie.getStreamUrl();
@@ -360,46 +383,138 @@ public class PlaybackActivity extends FragmentActivity {
     }
 
     private void initExoPlayer(String url) {
-        mWebView.setVisibility(View.GONE);
-        mPlayerView.setVisibility(View.VISIBLE);
+        initExoPlayer(url, null);
+    }
 
-        mPlayer = new ExoPlayer.Builder(this)
-                .setSeekBackIncrementMs(10000)
-                .setSeekForwardIncrementMs(10000)
-                .build();
+    private void initExoPlayer(String url, Map<String, String> headers) {
+        if (isFinishing() || isDestroyed()) return;
 
-        mPlayerView.setPlayer(mPlayer);
-        mPlayerView.setOnClickListener(v -> toggleControls());
+        runOnUiThread(() -> {
+            if (mTvEngineBadge != null) {
+                mTvEngineBadge.setText("⚡ EXOPLAYER HD (NATIVE)");
+                mTvEngineBadge.setTextColor(Color.parseColor("#10B981"));
+            }
 
-        Uri videoUri = Uri.parse(url);
-        MediaItem mediaItem = MediaItem.fromUri(videoUri);
-        mPlayer.setMediaItem(mediaItem);
-        mPlayer.prepare();
-        mPlayer.setPlayWhenReady(true);
+            mWebView.setVisibility(View.GONE);
+            if (mCustomViewContainer != null) mCustomViewContainer.setVisibility(View.GONE);
+            mPlayerView.setVisibility(View.VISIBLE);
 
-        mPlayer.addListener(new Player.Listener() {
-            @Override
-            public void onPlaybackStateChanged(int playbackState) {
-                if (playbackState == Player.STATE_BUFFERING) {
-                    setLoadingVisible(true);
-                } else if (playbackState == Player.STATE_READY) {
-                    setLoadingVisible(false);
-                } else if (playbackState == Player.STATE_ENDED) {
-                    finish();
+            if (mPlayer != null) {
+                mPlayer.stop();
+                mPlayer.release();
+                mPlayer = null;
+            }
+
+            // Google Media3 optimized for Android TV (Mali-450 / Amlogic hardware fallback)
+            DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
+                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+                    .setEnableDecoderFallback(true);
+
+            DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(12000, 45000, 2000, 4000)
+                    .build();
+
+            mPlayer = new ExoPlayer.Builder(this, renderersFactory)
+                    .setLoadControl(loadControl)
+                    .setSeekBackIncrementMs(10000)
+                    .setSeekForwardIncrementMs(10000)
+                    .build();
+
+            mPlayerView.setPlayer(mPlayer);
+            mPlayerView.setOnClickListener(v -> toggleControls());
+
+            DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
+                    .setUserAgent(DESKTOP_UA)
+                    .setConnectTimeoutMs(15000)
+                    .setReadTimeoutMs(20000)
+                    .setAllowCrossProtocolRedirects(true);
+
+            Map<String, String> reqHeaders = new HashMap<>();
+            reqHeaders.put("Referer", "https://embed.st/");
+            reqHeaders.put("Origin", "https://embed.st");
+            if (headers != null) {
+                for (Map.Entry<String, String> entry : headers.entrySet()) {
+                    if (!entry.getKey().equalsIgnoreCase("Range") && !entry.getKey().equalsIgnoreCase("Content-Length")) {
+                        reqHeaders.put(entry.getKey(), entry.getValue());
+                    }
                 }
             }
+            httpDataSourceFactory.setDefaultRequestProperties(reqHeaders);
 
-            @Override
-            public void onPlayerError(PlaybackException error) {
-                setLoadingVisible(false);
-                Toast.makeText(PlaybackActivity.this, "Gagal memutar siaran: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+            Uri videoUri = Uri.parse(url);
+            MediaItem mediaItem = MediaItem.fromUri(videoUri);
+
+            if (url.contains(".m3u8") || url.contains("chunklist") || url.contains("hls")) {
+                HlsMediaSource hlsMediaSource = new HlsMediaSource.Factory(httpDataSourceFactory)
+                        .setAllowChunklessPreparation(true)
+                        .createMediaSource(mediaItem);
+                mPlayer.setMediaSource(hlsMediaSource);
+            } else {
+                mPlayer.setMediaItem(mediaItem);
             }
+
+            mPlayer.prepare();
+            mPlayer.setPlayWhenReady(true);
+
+            mPlayer.addListener(new Player.Listener() {
+                @Override
+                public void onPlaybackStateChanged(int playbackState) {
+                    if (playbackState == Player.STATE_BUFFERING) {
+                        setLoadingVisible(true);
+                    } else if (playbackState == Player.STATE_READY) {
+                        setLoadingVisible(false);
+                    } else if (playbackState == Player.STATE_ENDED) {
+                        finish();
+                    }
+                }
+
+                @Override
+                public void onPlayerError(PlaybackException error) {
+                    setLoadingVisible(false);
+                    Toast.makeText(PlaybackActivity.this, "Beralih ke Web Engine...", Toast.LENGTH_SHORT).show();
+                    fallbackToWebView();
+                }
+            });
         });
+    }
+
+    private void switchToExoPlayer(String m3u8Url, Map<String, String> headers) {
+        if (mHasSwitchedToNative) return;
+        mHasSwitchedToNative = true;
+
+        mUiHandler.post(() -> {
+            Toast.makeText(this, "⚡ Memutar via Native ExoPlayer HD", Toast.LENGTH_SHORT).show();
+            if (mWebView != null) {
+                mWebView.onPause();
+                mWebView.loadUrl("about:blank");
+                mWebView.setVisibility(View.GONE);
+            }
+            initExoPlayer(m3u8Url, headers);
+        });
+    }
+
+    private void fallbackToWebView() {
+        mHasSwitchedToNative = false;
+        if (mPlayer != null) {
+            mPlayer.stop();
+            mPlayer.release();
+            mPlayer = null;
+        }
+        mPlayerView.setVisibility(View.GONE);
+        mWebView.setVisibility(View.VISIBLE);
+        if (mTvEngineBadge != null) {
+            mTvEngineBadge.setText("🌐 WEB ENGINE");
+            mTvEngineBadge.setTextColor(Color.parseColor("#F59E0B"));
+        }
+        if (mMovie != null && mMovie.getStreamUrl() != null) {
+            mWebView.loadUrl(mMovie.getStreamUrl());
+        }
     }
 
     private void initWebView(String url) {
         mPlayerView.setVisibility(View.GONE);
         mWebView.setVisibility(View.VISIBLE);
+        mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
         // Reset any cached sandbox flags in local storage
         try {
@@ -421,6 +536,9 @@ public class PlaybackActivity extends FragmentActivity {
         settings.setAllowContentAccess(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
+        settings.setLoadsImagesAutomatically(true);
+        settings.setSaveFormData(false);
+        settings.setGeolocationEnabled(false);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
@@ -444,7 +562,13 @@ public class PlaybackActivity extends FragmentActivity {
                 String host = reqUri.getHost() != null ? reqUri.getHost().toLowerCase() : "";
                 String path = reqUri.getPath() != null ? reqUri.getPath().toLowerCase() : "";
 
-                // 1. Block aggressive popups, trackers, and sandbox error redirect pages
+                // 1. Intercept Direct HLS Stream for Native Google ExoPlayer (Media3)
+                if (!mHasSwitchedToNative && (urlStr.contains(".m3u8") || urlStr.contains("chunklist") || urlStr.contains("playlist.m3u8"))
+                        && !urlStr.contains("ad.") && !urlStr.contains("doubleclick") && !urlStr.contains("analytics")) {
+                    switchToExoPlayer(urlStr, request.getRequestHeaders());
+                }
+
+                // 2. Block aggressive popups, trackers, and sandbox error redirect pages
                 if (host.contains("optimserve") || host.contains("aclib") || host.contains("adnxs")
                         || host.contains("popads") || host.contains("popunder") || host.contains("histats")
                         || host.contains("gussiessmutchy") || host.contains("llvpn") || path.endsWith("/ad.html")
@@ -625,16 +749,29 @@ public class PlaybackActivity extends FragmentActivity {
                 }
                 mCustomView = view;
                 mCustomViewCallback = callback;
-                ((FrameLayout) findViewById(android.R.id.content)).addView(view);
+                if (mCustomViewContainer != null) {
+                    view.setLayoutParams(new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT));
+                    mCustomViewContainer.removeAllViews();
+                    mCustomViewContainer.addView(view);
+                    mCustomViewContainer.setVisibility(View.VISIBLE);
+                }
                 mWebView.setVisibility(View.GONE);
             }
 
             @Override
             public void onHideCustomView() {
                 if (mCustomView == null) return;
-                ((FrameLayout) findViewById(android.R.id.content)).removeView(mCustomView);
+                if (mCustomViewContainer != null) {
+                    mCustomViewContainer.removeView(mCustomView);
+                    mCustomViewContainer.setVisibility(View.GONE);
+                }
                 mCustomView = null;
-                mCustomViewCallback.onCustomViewHidden();
+                if (mCustomViewCallback != null) {
+                    mCustomViewCallback.onCustomViewHidden();
+                    mCustomViewCallback = null;
+                }
                 mWebView.setVisibility(View.VISIBLE);
             }
         });
@@ -646,8 +783,16 @@ public class PlaybackActivity extends FragmentActivity {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             if (mCustomView != null) {
-                WebChromeClient client = new WebChromeClient();
-                client.onHideCustomView();
+                if (mCustomViewCallback != null) {
+                    mCustomViewCallback.onCustomViewHidden();
+                    mCustomViewCallback = null;
+                }
+                if (mCustomViewContainer != null) {
+                    mCustomViewContainer.removeView(mCustomView);
+                    mCustomViewContainer.setVisibility(View.GONE);
+                }
+                mCustomView = null;
+                mWebView.setVisibility(View.VISIBLE);
                 return true;
             }
             releasePlayer();
@@ -705,10 +850,18 @@ public class PlaybackActivity extends FragmentActivity {
     }
 
     private void releasePlayer() {
+        mHasSwitchedToNative = false;
         if (mPlayer != null) {
             mPlayer.stop();
             mPlayer.release();
             mPlayer = null;
+        }
+        if (mCustomView != null) {
+            if (mCustomViewContainer != null) {
+                mCustomViewContainer.removeView(mCustomView);
+                mCustomViewContainer.setVisibility(View.GONE);
+            }
+            mCustomView = null;
         }
         if (mWebView != null) {
             mWebView.loadUrl("about:blank");
