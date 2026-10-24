@@ -2,10 +2,10 @@
 <resources>
     <!-- Base application theme for Pure Android TV Leanback Experience -->
     <style name="Theme.OrangeStreamTV" parent="Theme.Leanback">
-        <item name="defaultBrandColor">@color/primary_orange</item>
+        <item name="defaultBrandColor">#090C13</item>
         <item name="defaultSearchColor">@color/primary_orange</item>
-        <item name="android:windowBackground">@color/bg_dark</item>
-        <item name="android:colorBackground">@color/bg_dark</item>
+        <item name="android:windowBackground">#06080D</item>
+        <item name="android:colorBackground">#06080D</item>
         <item name="android:colorPrimary">@color/primary_orange</item>
         <item name="android:colorPrimaryDark">#05060A</item>
         <item name="android:colorAccent">@color/accent_orange</item>
@@ -13,6 +13,11 @@
         <item name="android:windowFullscreen">true</item>
         <item name="rowHeaderStyle">@style/CustomRowHeaderStyle</item>
         <item name="headerStyle">@style/CustomHeaderItemStyle</item>
+        <item name="headersStyle">@style/CustomHeadersStyle</item>
+    </style>
+
+    <style name="CustomHeadersStyle" parent="Widget.Leanback.Headers">
+        <item name="android:background">#090C13</item>
     </style>
 
     <style name="CustomRowHeaderStyle" parent="Widget.Leanback.Row.Header">
@@ -20,9 +25,9 @@
     </style>
 
     <style name="TextAppearance.RowHeader" parent="TextAppearance.Leanback.Row.Header">
-        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColor">#FFFFFF</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:textSize">17sp</item>
+        <item name="android:textSize">16sp</item>
     </style>
 
     <style name="CustomHeaderItemStyle" parent="Widget.Leanback.Header">
@@ -30,8 +35,8 @@
     </style>
 
     <style name="TextAppearance.HeaderItem" parent="TextAppearance.Leanback.Header">
-        <item name="android:textColor">@color/text_secondary</item>
-        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">#94A3B8</item>
+        <item name="android:textSize">14sp</item>
     </style>
 
     <style name="Theme.OrangeStreamTV.Playback" parent="Theme.Leanback">

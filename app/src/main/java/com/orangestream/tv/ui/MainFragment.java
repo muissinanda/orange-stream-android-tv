@@ -57,18 +57,18 @@ public class MainFragment extends BrowseSupportFragment {
     }
 
     private void setupUIElements() {
-        setTitle("STREAMED TV • LIVE SPORTS");
-        setBadgeDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.logo));
+        setTitle("⚡ STREAMED.ST • LIVE SPORTS");
+        setBadgeDrawable(null);
         setHeadersState(HEADERS_ENABLED);
         setHeadersTransitionOnBackEnabled(true);
-        setBrandColor(ContextCompat.getColor(getActivity(), R.color.primary_orange));
+        setBrandColor(Color.parseColor("#090C13"));
         setSearchAffordanceColor(ContextCompat.getColor(getActivity(), R.color.primary_orange));
     }
 
     private void loadRows() {
-        ListRowPresenter listRowPresenter = new ListRowPresenter(FocusHighlight.ZOOM_FACTOR_SMALL, false);
-        listRowPresenter.setShadowEnabled(true);
-        listRowPresenter.setSelectEffectEnabled(true);
+        ListRowPresenter listRowPresenter = new ListRowPresenter(FocusHighlight.ZOOM_FACTOR_NONE, false);
+        listRowPresenter.setShadowEnabled(false);
+        listRowPresenter.setSelectEffectEnabled(false);
         mRowsAdapter = new ArrayObjectAdapter(listRowPresenter);
         CardPresenter cardPresenter = new CardPresenter();
 

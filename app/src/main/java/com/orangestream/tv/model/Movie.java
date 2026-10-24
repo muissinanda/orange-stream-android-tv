@@ -96,7 +96,7 @@ public class Movie implements Serializable {
 
     public String getPosterUrl() {
         if (posterPath == null || posterPath.trim().isEmpty()) {
-            return "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80";
+            return getDefaultSportImage();
         }
         if (posterPath.startsWith("http://") || posterPath.startsWith("https://")) {
             return posterPath;
@@ -108,9 +108,30 @@ public class Movie implements Serializable {
             return "https://film.boyblade.my.id" + posterPath;
         }
         if (posterPath.startsWith("/")) {
-            return "https://image.tmdb.org/t/p/w500" + posterPath;
+            return "https://film.boyblade.my.id/api/streamed" + posterPath;
         }
-        return "https://image.tmdb.org/t/p/w500/" + posterPath;
+        return "https://film.boyblade.my.id/api/streamed/images/" + posterPath;
+    }
+
+    private String getDefaultSportImage() {
+        if (category == null) return "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800";
+        String cat = category.toLowerCase();
+        if (cat.contains("football") || cat.contains("soccer")) {
+            return "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800";
+        }
+        if (cat.contains("basketball")) {
+            return "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800";
+        }
+        if (cat.contains("motor") || cat.contains("f1") || cat.contains("motogp")) {
+            return "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800";
+        }
+        if (cat.contains("fight") || cat.contains("ufc") || cat.contains("boxing")) {
+            return "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800";
+        }
+        if (cat.contains("tennis")) {
+            return "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=800";
+        }
+        return "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=800";
     }
 
     public String getBackdropUrl() {

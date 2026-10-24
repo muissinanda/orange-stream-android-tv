@@ -2,19 +2,17 @@ package com.orangestream.tv.presenter;
 
 import android.content.Context;
 import android.graphics.Color;
-import android.graphics.Outline;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
-import android.os.Build;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewOutlineProvider;
-import androidx.core.content.ContextCompat;
-import androidx.leanback.widget.ImageCardView;
+import android.widget.ImageView;
+import android.widget.TextView;
+import androidx.cardview.widget.CardView;
 import androidx.leanback.widget.Presenter;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
@@ -23,74 +21,58 @@ import com.orangestream.tv.model.Movie;
 
 public class CardPresenter extends Presenter {
 
-    private static final int POSTER_WIDTH_DP = 160;
-    private static final int POSTER_HEIGHT_DP = 240;
-    private static final int SPORTS_WIDTH_DP = 280;
-    private static final int SPORTS_HEIGHT_DP = 158;
-
     private static int dpToPx(Context context, int dp) {
         return Math.round(dp * context.getResources().getDisplayMetrics().density);
+    }
+
+    public static class SportViewHolder extends Presenter.ViewHolder {
+        public final View cardRoot;
+        public final CardView cardContainer;
+        public final ImageView ivPoster;
+        public final TextView tvLiveBadge;
+        public final TextView tvCategoryBadge;
+        public final View infoArea;
+        public final TextView tvTitle;
+        public final TextView tvSubtitle;
+        public final View focusBorder;
+
+        public SportViewHolder(View view) {
+            super(view);
+            cardRoot = view.findViewById(R.id.cardRoot);
+            cardContainer = view.findViewById(R.id.cardContainer);
+            ivPoster = view.findViewById(R.id.ivPoster);
+            tvLiveBadge = view.findViewById(R.id.tvLiveBadge);
+            tvCategoryBadge = view.findViewById(R.id.tvCategoryBadge);
+            infoArea = view.findViewById(R.id.infoArea);
+            tvTitle = view.findViewById(R.id.tvTitle);
+            tvSubtitle = view.findViewById(R.id.tvSubtitle);
+            focusBorder = view.findViewById(R.id.focusBorder);
+        }
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent) {
         Context context = parent.getContext();
+        View view = LayoutInflater.from(context).inflate(R.layout.item_sport_card, parent, false);
+        SportViewHolder vh = new SportViewHolder(view);
 
-        ImageCardView cardView = new ImageCardView(context) {
-            @Override
-            public void setSelected(boolean selected) {
-                updateCardVisualState(this, selected);
-                super.setSelected(selected);
+        view.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                vh.focusBorder.setVisibility(View.VISIBLE);
+                vh.cardContainer.setCardElevation(dpToPx(context, 12));
+                vh.infoArea.setBackgroundColor(Color.parseColor("#201812"));
+                vh.cardRoot.animate().scaleX(1.05f).scaleY(1.05f).setDuration(160).start();
+                vh.tvTitle.setSelected(true);
+            } else {
+                vh.focusBorder.setVisibility(View.GONE);
+                vh.cardContainer.setCardElevation(dpToPx(context, 3));
+                vh.infoArea.setBackgroundColor(Color.parseColor("#121724"));
+                vh.cardRoot.animate().scaleX(1.0f).scaleY(1.0f).setDuration(160).start();
+                vh.tvTitle.setSelected(false);
             }
-        };
+        });
 
-        cardView.setFocusable(true);
-        cardView.setFocusableInTouchMode(true);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            cardView.setOutlineProvider(new ViewOutlineProvider() {
-                @Override
-                public void getOutline(View view, Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), dpToPx(context, 12));
-                }
-            });
-            cardView.setClipToOutline(true);
-        }
-
-        updateCardVisualState(cardView, false);
-        return new ViewHolder(cardView);
-    }
-
-    private void updateCardVisualState(ImageCardView cardView, boolean selected) {
-        Context ctx = cardView.getContext();
-        int cornerRadius = dpToPx(ctx, 12);
-
-        GradientDrawable borderDrawable = new GradientDrawable();
-        borderDrawable.setCornerRadius(cornerRadius);
-
-        if (selected) {
-            borderDrawable.setColor(Color.parseColor("#1C1610"));
-            borderDrawable.setStroke(dpToPx(ctx, 3), ContextCompat.getColor(ctx, R.color.primary_orange));
-            cardView.setInfoAreaBackgroundColor(Color.parseColor("#261C13"));
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                cardView.setElevation(dpToPx(ctx, 10));
-                cardView.setTranslationZ(dpToPx(ctx, 4));
-            }
-        } else {
-            borderDrawable.setColor(Color.parseColor("#0E121B"));
-            borderDrawable.setStroke(dpToPx(ctx, 1), Color.parseColor("#1B2232"));
-            cardView.setInfoAreaBackgroundColor(Color.parseColor("#0F1420"));
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                cardView.setElevation(dpToPx(ctx, 2));
-                cardView.setTranslationZ(0);
-            }
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            cardView.setBackground(borderDrawable);
-        } else {
-            cardView.setBackgroundDrawable(borderDrawable);
-        }
+        return vh;
     }
 
     private CharSequence formatSportSubtitle(String raw) {
@@ -103,7 +85,7 @@ public class CardPresenter extends Presenter {
             ssb.setSpan(new ForegroundColorSpan(Color.parseColor("#FF4D4D")), 0, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             ssb.setSpan(new StyleSpan(Typeface.BOLD), 0, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             if (end < raw.length()) {
-                ssb.setSpan(new ForegroundColorSpan(Color.parseColor("#E2E8F0")), end, raw.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                ssb.setSpan(new ForegroundColorSpan(Color.parseColor("#F1F5F9")), end, raw.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
         } else if (raw.contains("24/7")) {
             ssb.setSpan(new ForegroundColorSpan(Color.parseColor("#F59E0B")), 0, raw.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -131,39 +113,58 @@ public class CardPresenter extends Presenter {
         return ssb;
     }
 
+    private String formatCategory(String cat) {
+        if (cat == null || cat.trim().isEmpty()) return "SPORTS";
+        String lower = cat.toLowerCase();
+        if (lower.contains("football") || lower.contains("soccer")) return "⚽ FOOTBALL";
+        if (lower.contains("basketball")) return "🏀 NBA";
+        if (lower.contains("motor") || lower.contains("f1") || lower.contains("motogp")) return "🏎️ MOTOR";
+        if (lower.contains("fight") || lower.contains("ufc") || lower.contains("boxing")) return "🥊 COMBAT";
+        if (lower.contains("tennis")) return "🎾 TENNIS";
+        if (lower.contains("hockey")) return "🏒 HOCKEY";
+        if (lower.contains("baseball")) return "⚾ BASEBALL";
+        if (lower.contains("golf")) return "⛳ GOLF";
+        if (lower.contains("cricket")) return "🏏 CRICKET";
+        if (lower.contains("rugby")) return "🏉 RUGBY";
+        return cat.toUpperCase();
+    }
+
     @Override
     public void onBindViewHolder(Presenter.ViewHolder viewHolder, Object item) {
-        if (!(item instanceof Movie)) return;
+        if (!(item instanceof Movie) || !(viewHolder instanceof SportViewHolder)) return;
         Movie movie = (Movie) item;
-        ImageCardView cardView = (ImageCardView) viewHolder.view;
-        Context context = cardView.getContext();
+        SportViewHolder vh = (SportViewHolder) viewHolder;
+        Context context = vh.view.getContext();
 
-        cardView.setTitleText(movie.getDisplayTitle());
-        if (movie.isSport()) {
-            cardView.setContentText(formatSportSubtitle(movie.getSportTimeFormatted()));
-        } else {
-            cardView.setContentText(movie.getRatingString() + " • " + movie.getYear());
-        }
+        vh.tvTitle.setText(movie.getDisplayTitle());
 
-        int width = dpToPx(context, movie.isSport() ? SPORTS_WIDTH_DP : POSTER_WIDTH_DP);
-        int height = dpToPx(context, movie.isSport() ? SPORTS_HEIGHT_DP : POSTER_HEIGHT_DP);
-        cardView.setMainImageDimensions(width, height);
+        String subtitleText = movie.isSport() ? movie.getSportTimeFormatted() : (movie.getRatingString() + " • " + movie.getYear());
+        vh.tvSubtitle.setText(formatSportSubtitle(subtitleText));
 
+        // Live badge
+        boolean isLive = subtitleText != null && (subtitleText.contains("SEDANG LIVE") || subtitleText.contains("LIVE"));
+        vh.tvLiveBadge.setVisibility(isLive ? View.VISIBLE : View.GONE);
+
+        // Category badge
+        vh.tvCategoryBadge.setText(formatCategory(movie.getCategory()));
+
+        // Poster image
         String imageUrl = movie.isSport() ? movie.getBackdropUrl() : movie.getPosterUrl();
 
         Glide.with(context)
                 .load(imageUrl)
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
                 .centerCrop()
-                .placeholder(R.drawable.banner)
-                .error(R.drawable.banner)
-                .into(cardView.getMainImageView());
+                .placeholder(R.drawable.bg_sport_placeholder)
+                .error(R.drawable.bg_sport_placeholder)
+                .into(vh.ivPoster);
     }
 
     @Override
     public void onUnbindViewHolder(Presenter.ViewHolder viewHolder) {
-        ImageCardView cardView = (ImageCardView) viewHolder.view;
-        cardView.setBadgeImage(null);
-        cardView.setMainImage(null);
+        if (viewHolder instanceof SportViewHolder) {
+            SportViewHolder vh = (SportViewHolder) viewHolder;
+            Glide.with(vh.view.getContext()).clear(vh.ivPoster);
+        }
     }
 }
